@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import enum
 import typing as T
 
 
@@ -19,24 +20,62 @@ def parse_stack_id(stack_id) -> T.Tuple[str, str, str, str]:
     return aws_account_id, aws_region, stack_name, uuid
 
 
-def get_stacks_detail_console_url(
+def get_stacks_view_console_url(
     stack_name: T.Optional[str] = None,
-    stack_id: T.Optional[str] = None,
-    active_only: bool = False,
-    deleted_only: bool = False,
+    aws_region: T.Optional[str] = None,
 ) -> str:
     """
 
     :param stack_name:
+    :param aws_region:
+    :return:
+    """
+    if stack_name is None:
+        filtering_text = ""
+    else:
+        filtering_text = stack_name
+
+    if aws_region is None:
+        token1 = ""
+        token2 = ""
+    else:
+        token1 = f"{aws_region}."
+        token2 = f"region={aws_region}"
+
+    return (
+        f"https://{token1}console.aws.amazon.com/cloudformation/home?{token2}#/stacks?"
+        f"filteringStatus=active"
+        f"&filteringText={filtering_text}"
+        f"&viewNested=true"
+        f"&hideStacks=false"
+    )
+
+
+class ConsoleHrefEnum(enum.Enum):
+    stack_info = "stackinfo"
+    events = "events"
+    resources = "resources"
+    outputs = "outputs"
+    parameters = "parameters"
+    template = "template"
+    changesets = "changesets"
+
+
+def get_stack_details_console_url(
+    stack_id: str = None,
+    active_only: bool = False,
+    deleted_only: bool = False,
+    href: T.Optional[str] = None,
+) -> str:
+    """
+
     :param stack_id: full ARN
     :param active_only:
     :param deleted_only:
+    :param href:
+
     :return:
     """
-    flag_count = sum([stack_name is None, stack_id is None])
-    if flag_count != 1:  # pragma: no cover
-        raise ValueError
-
     flag_count = sum([active_only, deleted_only])
     if flag_count == 0:
         active_only = True
@@ -49,10 +88,8 @@ def get_stacks_detail_console_url(
     else:  # pragma: no cover
         raise NotImplementedError
 
-    if stack_name is not None:
-        return f"https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringText={stack_name}&viewNested=true&hideStacks=false&stackId=&filteringStatus={filtering_status}"
-    elif stack_id is not None:
-        aws_account_id, aws_region, stack_name, uuid = parse_stack_id(stack_id)
-        return f"https://{aws_region}.console.aws.amazon.com/cloudformation/home?region={aws_region}#/stacks/stackinfo?filteringText={stack_name}&viewNested=true&hideStacks=false&stackId={stack_id}&filteringStatus={filtering_status}"
-    else:  # pragma: no cover
-        raise NotImplementedError
+    if href is None:
+        href = ConsoleHrefEnum.stack_info.value
+
+    aws_account_id, aws_region, stack_name, uuid = parse_stack_id(stack_id)
+    return f"https://{aws_region}.console.aws.amazon.com/cloudformation/home?region={aws_region}#/stacks/{href}?filteringText={stack_name}&viewNested=true&hideStacks=false&stackId={stack_id}&filteringStatus={filtering_status}"

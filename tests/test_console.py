@@ -2,7 +2,9 @@
 
 from aws_cloudformation.console import (
     parse_stack_id,
-    get_stacks_detail_console_url,
+    get_stacks_view_console_url,
+    get_stack_details_console_url,
+    ConsoleHrefEnum,
 )
 
 
@@ -14,15 +16,30 @@ def test_parse_stack_id():
     assert stack_name == "cottonformation-stack"
     assert uuid == "a517e0f0-750b-16ed-859b-1248b06dcab3"
 
+def test_get_stacks_view_console_url():
+    console_url = get_stacks_view_console_url()
+    print(console_url)
 
-def test_get_stacks_detail_console_url():
-    console_url = get_stacks_detail_console_url(
+    console_url = get_stacks_view_console_url(stack_name="CDKToolkit")
+    print(console_url)
+
+    console_url = get_stacks_view_console_url(stack_name="CDKToolkit", aws_region="us-east-1")
+    print(console_url)
+
+
+def test_get_stack_details_console_url():
+    console_url = get_stack_details_console_url(
         stack_id="arn:aws:cloudformation:us-east-1:669508176277:stack/CDKToolkit/b518e0f0-750b-11ed-859b-1208b06dceb3"
     )
     # print(console_url)
 
-    console_url = get_stacks_detail_console_url(stack_name="CDKToolkit")
+    console_url = get_stack_details_console_url(
+        stack_id="arn:aws:cloudformation:us-east-1:669508176277:stack/CDKToolkit/b518e0f0-750b-11ed-859b-1208b06dceb3",
+        href=ConsoleHrefEnum.resources.value,
+    )
     # print(console_url)
+
+
 
 
 if __name__ == "__main__":
