@@ -7,8 +7,12 @@ from aws_cloudformation.waiter import Waiter
 class TestWaiter:
     def test(self):
         with pytest.raises(TimeoutError):
-            for attempt, elapsed in Waiter(delays=1, timeout=3):
-                # print(attempt, elapsed)
+            for _ in Waiter(
+                delays=1,
+                timeout=3,
+                # verbose=True,
+                verbose=False,
+            ):
                 pass
 
 
