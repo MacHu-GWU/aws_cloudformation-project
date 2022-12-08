@@ -1,7 +1,6 @@
-
-.. image:: https://readthedocs.org/projects/aws_cloudformation/badge/?version=latest
-    :target: https://aws_cloudformation.readthedocs.io/index.html
-    :alt: Documentation Status
+.. .. image:: https://readthedocs.org/projects/aws_cloudformation/badge/?version=latest
+        :target: https://aws_cloudformation.readthedocs.io/index.html
+        :alt: Documentation Status
 
 .. image:: https://github.com/MacHu-GWU/aws_cloudformation-project/workflows/CI/badge.svg
     :target: https://github.com/MacHu-GWU/aws_cloudformation-project/actions?query=workflow:CI
