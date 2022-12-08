@@ -14,6 +14,7 @@ from colorama import Fore, Style
 
 from . import exc
 from . import helper
+from .console import get_s3_console_url
 from .waiter import Waiter
 from .stack import (
     StackStatusEnum,
@@ -157,6 +158,7 @@ def upload_template_to_s3(
     template: str,
     bucket: str,
     prefix: T.Optional[str] = None,
+    verbose: bool = True,
 ) -> str:
     """
     Upload the CloudFormation template body to S3 before deployment.
@@ -167,7 +169,7 @@ def upload_template_to_s3(
     :param bucket: s3 bucket name
     :param prefix: s3 prefix
 
-    :return: the full s3 uri for the template uploads.
+    :return: the template url (NOT s3 uri) for the template uploads.
     """
     s3_client = bsm.get_client(AwsServiceEnum.S3)
     template_type = detect_template_type(template)
@@ -179,12 +181,17 @@ def upload_template_to_s3(
         prefix = ""
     key = f"{prefix}{md5}.{template_type}"
     s3_uri = f"s3://{bucket}/{key}"
+    template_url = f"https://s3.amazonaws.com/{bucket}/{key}"
+    if verbose:
+        print(f"  upload template to {s3_uri} ...")
+        console_url = get_s3_console_url(bucket=bucket, prefix=key)
+        print(f"    preview at {console_url}")
     s3_client.put_object(
         Bucket=bucket,
-        Key=f"{prefix}{md5}",
+        Key=key,
         Body=template,
     )
-    return s3_uri
+    return template_url
 
 
 def _resolve_template_in_kwargs(
@@ -193,18 +200,20 @@ def _resolve_template_in_kwargs(
     template: T.Optional[str],
     bucket: T.Optional[str] = None,
     prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
+    verbose: bool = True,
 ):
     if template.startswith("s3://"):
         kwargs["TemplateURL"] = template
 
     if bucket is not None:
-        s3_uri = upload_template_to_s3(
+        template_url = upload_template_to_s3(
             bsm,
             template,
             bucket=bucket,
             prefix=prefix,
+            verbose=verbose,
         )
-        kwargs["TemplateURL"] = s3_uri
+        kwargs["TemplateURL"] = template_url
     elif sys.getsizeof(template) > TEMPLATE_BODY_SIZE_LIMIT:
         raise ValueError(
             f"Template size is larger than {TEMPLATE_BODY_SIZE_LIMIT}B, "
@@ -220,15 +229,17 @@ def _resolve_stack_policy(
     stack_policy: str,
     bucket: str,
     prefix: T.Optional[str] = None,
+    verbose: bool = True,
 ):
     if bucket is not None:
-        s3_uri = upload_template_to_s3(
+        policy_url = upload_template_to_s3(
             bsm,
             stack_policy,
             bucket=bucket,
             prefix=prefix,
+            verbose=verbose,
         )
-        kwargs["StackPolicyURL"] = s3_uri
+        kwargs["StackPolicyURL"] = policy_url
     elif sys.getsizeof(stack_policy) > STACK_POLICY_SIZE_LIMIT:
         raise ValueError(
             f"Stack policy size is larger than {STACK_POLICY_SIZE_LIMIT}B, "
@@ -269,6 +280,7 @@ def _resolve_create_update_common_kwargs(
     include_macro: bool = False,
     resource_types: T.Optional[T.List[str]] = None,
     client_request_token: T.Optional[str] = None,
+    verbose: bool = True,
 ):
     # RoleARN
     if execution_role_arn:
@@ -279,8 +291,8 @@ def _resolve_create_update_common_kwargs(
 
     # StackPolicy
     if stack_policy:
-        _resolve_template_in_kwargs(
-            kwargs, bsm, stack_policy, bucket, prefix_stack_policy
+        _resolve_stack_policy(
+            kwargs, bsm, stack_policy, bucket, prefix_stack_policy, verbose
         )
 
     # Parameters
@@ -317,6 +329,7 @@ def create_stack(
     resource_types: T.Optional[T.List[str]] = None,
     client_request_token: T.Optional[str] = None,
     enable_termination_protection: T.Optional[bool] = None,
+    verbose: bool = True,
 ) -> str:
     """
     A wrapper provider more user-friendly API and type hint for
@@ -342,6 +355,7 @@ def create_stack(
     :param resource_types:
     :param client_request_token:
     :param enable_termination_protection:
+    :param verbose:
 
     :return: stack_id
     """
@@ -361,10 +375,11 @@ def create_stack(
         include_macro=include_macro,
         resource_types=resource_types,
         client_request_token=client_request_token,
+        verbose=verbose,
     )
 
     # Template
-    _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix)
+    _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix, verbose)
 
     # EnableTerminationProtection
     if enable_termination_protection is not None:
@@ -394,6 +409,7 @@ def update_stack(
     resource_types: T.Optional[T.List[str]] = None,
     client_request_token: T.Optional[str] = None,
     disable_rollback: T.Optional[bool] = None,
+    verbose: bool = True,
 ) -> str:
     """
     A wrapper provider more user-friendly API and type hint for
@@ -420,6 +436,7 @@ def update_stack(
     :param resource_types:
     :param client_request_token:
     :param disable_roll_back:
+    :param verbose:
 
     :return: stack_id
     """
@@ -442,13 +459,14 @@ def update_stack(
         include_macro=include_macro,
         resource_types=resource_types,
         client_request_token=client_request_token,
+        verbose=verbose,
     )
 
     # Template
     if use_previous_template is True:
         kwargs["UsePreviousTemplate"] = use_previous_template
     else:
-        _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix)
+        _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix, verbose)
 
     # DisableRollback
     if disable_rollback is not None:
@@ -484,6 +502,7 @@ def create_change_set(
     change_set_type: T.Optional[ChangeSetTypeEnum] = None,
     client_request_token: T.Optional[str] = None,
     disable_rollback: T.Optional[bool] = None,
+    verbose: bool = True,
 ) -> T.Tuple[str, str, str]:
     """
     A wrapper provider more user-friendly API and type hint for
@@ -547,7 +566,7 @@ def create_change_set(
     if use_previous_template is True:
         kwargs["UsePreviousTemplate"] = use_previous_template
     else:
-        _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix)
+        _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix, verbose)
 
     # ChangeSetType
     if change_set_type is not None:
@@ -711,7 +730,9 @@ def wait_create_or_update_stack_to_finish(
                     icon = "🟢"
                 else:
                     icon = "🔴"
-                print(f"\n    reached status {icon} {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}")
+                print(
+                    f"\n    reached status {icon} {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}"
+                )
             return stack
 
 
@@ -751,7 +772,9 @@ def wait_delete_stack_to_finish(
         else:
             if stack.status.is_stopped():
                 if verbose:
-                    print(f"\n    reached status {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}")
+                    print(
+                        f"\n    reached status {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
+                    )
             return
 
 
@@ -776,7 +799,9 @@ def wait_create_change_set_to_finish(
     :return:
     """
     if verbose:
-        print(f"  {Fore.CYAN}wait for change set creation to finish{Style.RESET_ALL} ...")
+        print(
+            f"  {Fore.CYAN}wait for change set creation to finish{Style.RESET_ALL} ..."
+        )
 
     for _ in Waiter(
         delays=delays,
@@ -795,7 +820,9 @@ def wait_create_change_set_to_finish(
             ChangeSetStatusEnum.FAILED.value,
         ]:
             if verbose:
-                print(f"\n    reached status {Fore.CYAN}{change_set_status}{Style.RESET_ALL}")
+                print(
+                    f"\n    reached status {Fore.CYAN}{change_set_status}{Style.RESET_ALL}"
+                )
 
             if change_set_status == ChangeSetStatusEnum.FAILED.value:
                 status_reason = response["StatusReason"]

@@ -11,11 +11,13 @@ from aws_cloudformation.tests.stacks.secretmanager_stack import (
 
 def test_deploy_stack():
     stack_name = "cottonformation-deploy-stack-test"
+    bucket = "aws-data-lab-sanhe-for-everything"
 
     # deploy_stack(
     #     bsm,
     #     stack_name=stack_name,
     #     template=make_tpl_1().to_json(),
+    #     bucket=bucket,
     #     skip_prompt=True,  # by default, it prompt user input for YES / NO to proceed
     #     # skip_plan=False, # by default, it does plan first
     #     # wait=True, # by default, it waits the update to finish
@@ -25,6 +27,7 @@ def test_deploy_stack():
     #     bsm,
     #     stack_name=stack_name,
     #     template=make_tpl_2().to_json(),
+    #     bucket=bucket,
     #     skip_prompt=True,
     #     # skip_plan=False,
     #     # wait=True,
@@ -34,6 +37,7 @@ def test_deploy_stack():
     #     bsm,
     #     stack_name=stack_name,
     #     template=make_tpl_3().to_json(),
+    #     bucket=bucket,
     #     skip_prompt=True,
     #     # skip_plan=False,
     #     # wait=True,

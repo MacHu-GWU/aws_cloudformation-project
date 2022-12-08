@@ -29,6 +29,13 @@ Backlog
 **Miscellaneous**
 
 
+1.1.2 (2022-12-08)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Bugfixes**
+
+- fix a bug that using s3 uri for ``TemplateUrl`` argument, it should use ``https://s3.amazonaws.com/${bucket}/${key}``
+
+
 1.1.1 (2022-12-08)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Minor Improvements**

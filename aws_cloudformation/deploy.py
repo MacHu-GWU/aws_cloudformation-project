@@ -99,15 +99,20 @@ def _deploy_stack_without_change_set(
             resource_types=resource_types,
             client_request_token=client_request_token,
             enable_termination_protection=enable_termination_protection,
+            verbose=verbose,
         )
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack_id)
-            print(f"  preview {Fore.CYAN}create stack progress{Style.RESET_ALL} at: {console_url}")
+            print(
+                f"  preview {Fore.CYAN}create stack progress{Style.RESET_ALL} at: {console_url}"
+            )
     # already exists, do update
     else:
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack.id)
-            print(f"  preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}")
+            print(
+                f"  preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}"
+            )
 
         if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
             raise ValueError(
@@ -141,6 +146,7 @@ def _deploy_stack_without_change_set(
                 resource_types=resource_types,
                 client_request_token=client_request_token,
                 disable_rollback=disable_rollback,
+                verbose=verbose,
             )
         except Exception as e:
             if "No updates are to be performed" in str(e):
@@ -208,6 +214,7 @@ def _deploy_stack_using_change_set(
         change_set_type=ChangeSetTypeEnum.CREATE.value,
         client_request_token=client_request_token,
         disable_rollback=disable_rollback,
+        verbose=verbose,
     )
 
     # doesn't exist, do create
@@ -236,7 +243,9 @@ def _deploy_stack_using_change_set(
             stack_id=stack_id,
             change_set_id=change_set_id,
         )
-        print(f"  preview {Fore.CYAN}change set details{Style.RESET_ALL} at: {console_url}")
+        print(
+            f"  preview {Fore.CYAN}change set details{Style.RESET_ALL} at: {console_url}"
+        )
 
     try:
         response = wait_create_change_set_to_finish(
@@ -252,7 +261,9 @@ def _deploy_stack_using_change_set(
     except TimeoutError as e:
         raise e
     except exc.CreateStackChangeSetButNotChangeError as e:
-        print(f"    The submitted information didn't contain changes. Submit different information to create a change set.")
+        print(
+            f"    The submitted information didn't contain changes. Submit different information to create a change set."
+        )
         return
     except exc.CreateStackChangeSetFailedError as e:
         raise e
@@ -274,7 +285,9 @@ def _deploy_stack_using_change_set(
 
     if verbose:
         console_url = get_stack_details_console_url(stack_id=stack_id)
-        print(f"  preview {Fore.CYAN}{action} stack progress{Style.RESET_ALL} at: {console_url}")
+        print(
+            f"  preview {Fore.CYAN}{action} stack progress{Style.RESET_ALL} at: {console_url}"
+        )
 
     response = execute_change_set(
         bsm=bsm,
@@ -374,7 +387,11 @@ def deploy_stack(
     .. versionadded:: 0.1.1
     """
     if verbose:
-        print_header(f"{Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}", "=", 80)
+        print_header(
+            f"{Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
+            "=",
+            80,
+        )
         console_url = get_stacks_view_console_url(stack_name=stack_name)
         print(f"  preview stack in AWS CloudFormation console: {console_url}")
 
@@ -470,10 +487,14 @@ def remove_stack(
     :param verbose: whether you want to log information to console
 
     :return: Nothing
-    
+
     .. versionadded:: 0.1.1
     """
-    print_header(f"{Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}", "=", 80)
+    print_header(
+        f"{Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
+        "=",
+        80,
+    )
 
     if verbose:
         console_url = get_stacks_view_console_url(stack_name)
