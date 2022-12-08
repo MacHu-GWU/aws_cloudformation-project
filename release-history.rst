@@ -8,7 +8,6 @@ Backlog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
-- Add "NestedStack" support
 - Add "StackSet" support
 
 **Minor Improvements**
@@ -18,7 +17,7 @@ Backlog
 **Miscellaneous**
 
 
-1.2.1 (TODO)
+1.2.1 (2022-12-08)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
@@ -28,10 +27,6 @@ Backlog
 **Minor Improvements**
 
 - more integration test using real AWS CloudFormation
-
-**Bugfixes**
-
-**Miscellaneous**
 
 
 1.1.2 (2022-12-08)
