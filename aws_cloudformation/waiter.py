@@ -37,7 +37,7 @@ class Waiter:
                     sys.stdout.write(
                         f"\r{self.tab}on {attempt} th attempt, "
                         f"elapsed {elapsed} seconds, "
-                        f"remain {int(remaining)} seconds ..."
+                        f"remain {self.timeout - elapsed} seconds ..."
                     )
                     sys.stdout.flush()
                 yield attempt, int(elapsed)
