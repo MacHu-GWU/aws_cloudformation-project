@@ -18,5 +18,21 @@ try:
         deploy_stack,
         remove_stack,
     )
+    from .better_boto import describe_live_stack
+    from .stack import (
+        StackStatusEnum,
+        DriftStatusEnum,
+        Parameter,
+        Output,
+        Stack,
+    )
+    from .change_set_visualizer import (
+        TargetAttributeEnum,
+        Target,
+        Detail,
+        ChangeActionEnum,
+        ResourceChange,
+        ChangeSet,
+    )
 except ImportError:  # pragma: no cover
     pass
