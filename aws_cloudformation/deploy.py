@@ -397,7 +397,8 @@ def deploy_stack(
             verbose=verbose,
         )
 
-    print("  done")
+    if verbose:
+        print("  done")
 
 
 def remove_stack(
@@ -464,4 +465,5 @@ def remove_stack(
             verbose=verbose,
         )
 
-    print("  done")
+    if verbose:
+        print("  done")
