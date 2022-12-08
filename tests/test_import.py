@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-from pytest import raises, approx
 
 
 def test():
     import aws_cloudformation
-    pass
+
+    _ = aws_cloudformation.deploy_stack
+    _ = aws_cloudformation.remove_stack
 
 
 if __name__ == "__main__":

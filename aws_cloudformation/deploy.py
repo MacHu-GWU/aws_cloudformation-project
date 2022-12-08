@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
+"""
+Implement the fancy deployment and remove API with "terraform plan" liked feature.
+"""
+
 import typing as T
 
-from boto_session_manager import BotoSesManager, AwsServiceEnum
+from boto_session_manager import BotoSesManager
 
 from . import exc
 from .better_boto import (
@@ -33,6 +37,11 @@ from .change_set_visualizer import print_header, visualize_change_set
 
 
 def prompt_to_proceed() -> bool:
+    """
+    Prompt to ask user to enter: "YES" or "NO"
+
+    :return: True if user entered YES, otherwise returns False.
+    """
     value = input("Type 'Y' or 'YES' to proceed: ")
     return value.strip() in ["Y", "YES"]
 
@@ -296,7 +305,8 @@ def deploy_stack(
     verbose: bool = True,
 ):
     """
-    All-in-one
+    Deploy an AWS CloudFormation stack. But way more powerful than the original
+    boto3 API.
 
     :param bsm:
     :param stack_name:
@@ -315,12 +325,18 @@ def deploy_stack(
     :param resource_types:
     :param client_request_token:
     :param enable_termination_protection:
-    :param disable_roll_back:
+    :param disable_rollback:
     :param wait:
     :param delays:
     :param timeout:
+    :param skip_plan:
+    :param skip_prompt:
+    :param change_set_delays:
+    :param change_set_timeout:
     :param verbose:
     :return:
+
+    .. versionadded:: 0.1.1
     """
     if verbose:
         print_header(f"Deploy stack: {stack_name!r}", "=", 80)
@@ -396,6 +412,23 @@ def remove_stack(
     skip_prompt: bool = False,
     verbose: bool = True,
 ):
+    """
+    Remove an AWS CloudFormation Stack.
+
+    :param bsm:
+    :param stack_name:
+    :param retain_resources:
+    :param role_arn:
+    :param client_request_token:
+    :param wait:
+    :param delays:
+    :param timeout:
+    :param skip_prompt:
+    :param verbose:
+    :return:
+    
+    .. versionadded:: 0.1.1
+    """
     print_header(f"Remove stack {stack_name!r}", "=", 80)
 
     if verbose:

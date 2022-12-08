@@ -8,7 +8,7 @@ import itertools
 
 class Waiter:
     """
-    Simple retry / poll.
+    Simple retry / poll with progress.
     """
     def __init__(
         self,
