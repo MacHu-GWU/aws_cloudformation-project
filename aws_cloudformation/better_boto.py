@@ -157,7 +157,18 @@ def upload_template_to_s3(
     template: str,
     bucket: str,
     prefix: T.Optional[str] = None,
-):
+) -> str:
+    """
+    Upload the CloudFormation template body to S3 before deployment.
+    The target location is: s3://${bucket}/${prefix}/${md5_of_template_body}.${json_or_yaml}.
+
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param template: template Body in string
+    :param bucket: s3 bucket name
+    :param prefix: s3 prefix
+
+    :return: the full s3 uri for the template uploads.
+    """
     s3_client = bsm.get_client(AwsServiceEnum.S3)
     template_type = detect_template_type(template)
     md5 = helper.md5_of_text(template)
