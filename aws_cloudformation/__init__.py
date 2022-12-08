@@ -7,7 +7,7 @@ Expose public API.
 
 from ._version import __version__
 
-__short_description__ = "A user-friendly AWS CloudFormation API"
+__short_description__ = "⭐ AWS CloudFormation deployment for human, Enable terraform plan, terraform apply styled deployment."
 __license__ = "MIT"
 __author__ = "Sanhe Hu"
 __author_email__ = "husanhe@gmail.com"
