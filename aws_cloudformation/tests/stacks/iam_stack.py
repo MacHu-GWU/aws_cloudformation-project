@@ -17,8 +17,9 @@ def make_iam_group1() -> cf.Template:
 
 def make_iam_group2() -> cf.Template:
     tpl = make_iam_group1()
+
     iam_group1 = tpl.Resources["IamGroup1"]
-    iam_group1.p_Path = "my-group"
+    iam_group1.p_Path = "/path1/"
 
     iam_group2 = iam.Group(
         "IamGroup2",
@@ -32,9 +33,17 @@ def make_iam_group2() -> cf.Template:
 def make_iam_group3() -> cf.Template:
     tpl = make_iam_group2()
 
+    iam_group1 = tpl.Resources["IamGroup1"]
+    iam_group1.p_Path = "/path11/"
+
+    tpl.remove(tpl.Resources["IamGroup2"])
+
     iam_group3 = iam.Group(
         "IamGroup3",
         p_GroupName="Group3",
+        p_ManagedPolicyArns=[
+            "arn:aws:iam::aws:policy/IAMReadOnlyAccess",
+        ]
     )
     tpl.add(iam_group3)
     return tpl
