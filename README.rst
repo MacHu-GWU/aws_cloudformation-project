@@ -55,7 +55,7 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
 
 **Talk is cheap, show me the code**
 
-CloudFormation declaration, see `cottonformation <https://github.com/MacHu-GWU/cottonformation-project>`_:
+⭐ CloudFormation declaration, see `cottonformation <https://github.com/MacHu-GWU/cottonformation-project>`_:
 
 .. code-block:: python
 
@@ -130,7 +130,7 @@ CloudFormation declaration, see `cottonformation <https://github.com/MacHu-GWU/c
 
         return tpl
 
-Deployment Script:
+⭐ Deployment Script:
 
 .. code-block:: python
 
@@ -173,7 +173,7 @@ Deployment Script:
         skip_prompt=True,
     )
 
-Console Output:
+⭐ Console Output:
 
 .. code-block:: bash
 
