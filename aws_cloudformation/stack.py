@@ -45,6 +45,12 @@ class StackStatusEnum(enum.Enum):
     def is_complete(self) -> bool:
         return self in _COMPLETE_STATUS
 
+    def is_stopped(self) -> bool:
+        return self in _STOPPED_STATUS
+
+    def is_live(self) -> bool:
+        return not (self in _NOT_LIVE_STATUS)
+
     @classmethod
     def get_by_name(cls, name: str) -> "StackStatusEnum":
         return cls[name]
@@ -96,6 +102,26 @@ _COMPLETE_STATUS: T.Set[StackStatusEnum] = {
     StackStatusEnum.IMPORT_ROLLBACK_COMPLETE,
 }
 
+_STOPPED_STATUS: T.Set[StackStatusEnum] = {
+    StackStatusEnum.CREATE_FAILED,
+    StackStatusEnum.ROLLBACK_FAILED,
+    StackStatusEnum.DELETE_FAILED,
+    StackStatusEnum.UPDATE_FAILED,
+    StackStatusEnum.UPDATE_ROLLBACK_FAILED,
+    StackStatusEnum.IMPORT_ROLLBACK_FAILED,
+    StackStatusEnum.CREATE_COMPLETE,
+    StackStatusEnum.ROLLBACK_COMPLETE,
+    StackStatusEnum.DELETE_COMPLETE,
+    StackStatusEnum.UPDATE_COMPLETE,
+    StackStatusEnum.UPDATE_ROLLBACK_COMPLETE,
+    StackStatusEnum.IMPORT_COMPLETE,
+    StackStatusEnum.IMPORT_ROLLBACK_COMPLETE,
+}
+
+_NOT_LIVE_STATUS: T.Set[StackStatusEnum] = {
+    StackStatusEnum.DELETE_COMPLETE,
+}
+
 
 @dataclasses.dataclass
 class Output:
@@ -111,6 +137,7 @@ class Output:
     export_name: T.Optional[str] = dataclasses.field(default=None)
 
 
+@dataclasses.dataclass
 class Parameter:
     """
     Ref:
@@ -119,15 +146,40 @@ class Parameter:
     """
 
     key: str = dataclasses.field()
-    value: T.Any = dataclasses.field()
-    use_previous_value: bool = dataclasses.field(default=None)
+    value: T.Optional[T.Any] = dataclasses.field(default=None)
+    use_previous_value: T.Optional[bool] = dataclasses.field(default=None)
     resolved_value: T.Optional[T.Any] = dataclasses.field(default=None)
+
+    def __post_init__(self):
+        if (self.use_previous_value is True) and (self.value is not None):
+            raise ValueError
+
+    def to_kwargs(self) -> dict:
+        dct = dict(ParameterKey=self.key)
+        if self.use_previous_value is True:
+            dct["UsePreviousValue"] = True
+        else:
+            dct["ParameterValue"] = self.value
+        # todo, add support for SSM ResolvedValue
+        return dct
+
+
+class DriftStatusEnum(enum.Enum):
+    DRIFTED = "DRIFTED"
+    IN_SYNC = "IN_SYNC"
+    UNKNOWN = "UNKNOWN"
+    NOT_CHECKED = "NOT_CHECKED"
+
+    @classmethod
+    def get_by_name(cls, name: str) -> "DriftStatusEnum":
+        return cls[name]
 
 
 @dataclasses.dataclass
 class Stack:
     id: str = dataclasses.field()
     name: str = dataclasses.field()
+    change_set_id: T.Optional[str] = dataclasses.field(default=None)
     status: T.Optional[StackStatusEnum] = dataclasses.field(default=None)
     description: T.Optional[str] = dataclasses.field(default=None)
     role_arn: T.Optional[str] = dataclasses.field(default=None)
@@ -140,3 +192,23 @@ class Stack:
     enable_termination_protection: bool = dataclasses.field(default=False)
     parent_id: T.Optional[str] = dataclasses.field(default=None)
     root_id: T.Optional[str] = dataclasses.field(default=None)
+
+    drift_status: T.Optional[DriftStatusEnum] = dataclasses.field(default=None)
+    drift_last_check_time: T.Optional[datetime] = dataclasses.field(default=None)
+
+
+class ChangeSetStatusEnum(enum.Enum):
+    CREATE_PENDING = "CREATE_PENDING"
+    CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
+    CREATE_COMPLETE = "CREATE_COMPLETE"
+    DELETE_PENDING = "DELETE_PENDING"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_COMPLETE = "DELETE_COMPLETE"
+    DELETE_FAILED = "DELETE_FAILED"
+    FAILED = "FAILED"
+
+
+class ChangeSetTypeEnum(enum.Enum):
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    IMPORT = "IMPORT"
