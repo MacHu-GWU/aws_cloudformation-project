@@ -455,7 +455,7 @@ def deploy_stack(
 
 def remove_stack(
     bsm: "BotoSesManager",
-    stack_name: T.Optional[str] = None,
+    stack_name: str = None,
     retain_resources: T.Optional[T.List[str]] = None,
     role_arn: T.Optional[bool] = None,
     client_request_token: T.Optional[str] = None,

@@ -664,7 +664,7 @@ def execute_change_set(
 
 def delete_stack(
     bsm: "BotoSesManager",
-    stack_name: T.Optional[str] = None,
+    stack_name: str,
     retain_resources: T.Optional[T.List[str]] = None,
     role_arn: T.Optional[bool] = None,
     client_request_token: T.Optional[str] = None,
