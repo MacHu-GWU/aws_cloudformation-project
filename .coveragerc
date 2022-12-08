@@ -4,10 +4,10 @@
 omit =
     aws_cloudformation/_version.py
     aws_cloudformation/cli.py
-    aws_cloudformation/pkg/*
     aws_cloudformation/docs/*
     aws_cloudformation/tests/*
-    aws_cloudformation/handlers/*
+    aws_cloudformation/better_boto.py
+    aws_cloudformation/deploy.py
 
 [report]
 # Regexes for lines to exclude from consideration
