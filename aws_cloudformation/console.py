@@ -92,4 +92,31 @@ def get_stack_details_console_url(
         href = ConsoleHrefEnum.stack_info.value
 
     aws_account_id, aws_region, stack_name, uuid = parse_stack_id(stack_id)
-    return f"https://{aws_region}.console.aws.amazon.com/cloudformation/home?region={aws_region}#/stacks/{href}?filteringText={stack_name}&viewNested=true&hideStacks=false&stackId={stack_id}&filteringStatus={filtering_status}"
+    return (
+        f"https://{aws_region}.console.aws.amazon.com/cloudformation/home?"
+        f"region={aws_region}#/stacks/{href}?"
+        f"filteringText={stack_name}"
+        f"&viewNested=true"
+        f"&hideStacks=false"
+        f"&stackId={stack_id}"
+        f"&filteringStatus={filtering_status}"
+    )
+
+
+def get_change_set_console_url(
+    stack_id: str,
+    change_set_id: str
+) -> str:
+    """
+
+    :param stack_id:
+    :param change_set_id:
+    :return:
+    """
+    _, aws_region, _, _ = parse_stack_id(stack_id)
+    return (
+        f"https://{aws_region}.console.aws.amazon.com/cloudformation/home?"
+        f"region={aws_region}#/stacks/changesets/changes?"
+        f"stackId={stack_id}"
+        f"&changeSetId={change_set_id}"
+    )

@@ -4,6 +4,7 @@ from aws_cloudformation.console import (
     parse_stack_id,
     get_stacks_view_console_url,
     get_stack_details_console_url,
+    get_change_set_console_url,
     ConsoleHrefEnum,
 )
 
@@ -16,6 +17,7 @@ def test_parse_stack_id():
     assert stack_name == "cottonformation-stack"
     assert uuid == "a517e0f0-750b-16ed-859b-1248b06dcab3"
 
+
 def test_get_stacks_view_console_url():
     console_url = get_stacks_view_console_url()
     print(console_url)
@@ -23,7 +25,9 @@ def test_get_stacks_view_console_url():
     console_url = get_stacks_view_console_url(stack_name="CDKToolkit")
     print(console_url)
 
-    console_url = get_stacks_view_console_url(stack_name="CDKToolkit", aws_region="us-east-1")
+    console_url = get_stacks_view_console_url(
+        stack_name="CDKToolkit", aws_region="us-east-1"
+    )
     print(console_url)
 
 
@@ -40,6 +44,12 @@ def test_get_stack_details_console_url():
     # print(console_url)
 
 
+def test_get_change_set_console_url():
+    console_url = get_change_set_console_url(
+        stack_id="arn:aws:cloudformation:us-east-1:669508176277:stack/cottonformation-deploy-stack-test/b6400b70-7682-11ed-962e-0a1f3286c49d",
+        change_set_id="arn:aws:cloudformation:us-east-1:669508176277:changeSet/cottonformation-deploy-stack-test-2022-12-07-23-32-23-124/3b20fb80-3a95-400f-ae93-c357c16daf57",
+    )
+    # print(console_url)
 
 
 if __name__ == "__main__":
