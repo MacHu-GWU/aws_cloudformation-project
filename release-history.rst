@@ -39,3 +39,9 @@ Backlog
 - First release
 - Add :func:`~aws_cloudformation.deploy.deploy_stack`, similar to ``terraform plan`` and ``terraform apply`` combined API. Allow direct deploy or using change set
 - Add :func:`~aws_cloudformation.deploy.remove_stack`, similar to ``terraform destroy``.
+
+**Miscellaneous**
+
+- total line of source code: 2168
+- total line of test code: 329
+- total line of code: 2497
