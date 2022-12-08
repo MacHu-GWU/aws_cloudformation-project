@@ -7,6 +7,11 @@ from collections import Counter
 
 from colorama import Fore, Style
 
+from .better_boto import describe_change_set
+
+if T.TYPE_CHECKING:
+    from boto_session_manager import BotoSesManager
+
 
 class TargetAttributeEnum(enum.Enum):
     PROPERTIES = "Properties"
@@ -79,8 +84,9 @@ class ResourceChange:
     action: str = dataclasses.field()
     resource_type: str = dataclasses.field()
     logical_resource_id: str = dataclasses.field()
-    physical_resource_id: str = dataclasses.field(default=None)
-    replacement: str = dataclasses.field(default=None)
+    physical_resource_id: T.Optional[str] = dataclasses.field(default=None)
+    replacement: T.Optional[str] = dataclasses.field(default=None)
+    change_set_id: T.Optional[str] = dataclasses.field(default=None)
     details: T.List[Detail] = dataclasses.field(default_factory=list)
 
     @classmethod
@@ -91,6 +97,7 @@ class ResourceChange:
             logical_resource_id=dct["LogicalResourceId"],
             physical_resource_id=dct.get("PhysicalResourceId"),
             replacement=dct.get("Replacement"),
+            change_set_id=dct.get("ChangeSetId"),
             details=list(
                 sort_details([Detail.from_dict(d) for d in dct.get("Details", [])])
             ),
@@ -119,16 +126,25 @@ class ChangeSet:
     change_set_name: str = dataclasses.field()
     stack_id: str = dataclasses.field()
     stack_name: str = dataclasses.field()
+    description: T.Optional[str] = dataclasses.field(default=None)
     changes: T.List[ResourceChange] = dataclasses.field(default_factory=list)
 
     @classmethod
     def from_dict(cls, dct: dict) -> "ChangeSet":
+        """
+
+        :param dct: the ``cloudformation_client.describe_change_set`` response.
+        """
         return cls(
             change_set_id=dct["ChangeSetId"],
             change_set_name=dct["ChangeSetName"],
             stack_id=dct["StackId"],
             stack_name=dct["StackName"],
-            changes=[ResourceChange.from_dict(d) for d in dct.get("Changes", [])],
+            description=dct.get("Description"),
+            changes=[
+                ResourceChange.from_dict(d["ResourceChange"])
+                for d in dct.get("Changes", [])
+            ],
         )
 
 
@@ -158,7 +174,9 @@ def print_header(msg: str, char: str, length: int, corner_char=""):
 
 
 def visualize_change_set(
-    changes: T.List[dict],
+    change_set: ChangeSet,
+    bsm: T.Optional["BotoSesManager"] = None,
+    include_nested_stack: bool = False,
     _verbose: bool = True,
 ):
     """
@@ -166,13 +184,19 @@ def visualize_change_set(
 
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_change_set
     """
-    resource_change_list: T.List[ResourceChange] = [
-        ResourceChange.from_dict(change["ResourceChange"]) for change in changes
-    ]
-    resource_change_list = list(sort_changes(resource_change_list))
+    print_header(
+        f"    >>> Change for stack {Fore.CYAN}{change_set.stack_name}{Style.RESET_ALL} <<<",
+        " ",
+        80,
+    )
+    print(f"stack id = {Fore.CYAN}{change_set.stack_id}{Style.RESET_ALL}")
+    print(f"change set id = {Fore.CYAN}{change_set.change_set_id}{Style.RESET_ALL}")
+    resource_change_list = list(sort_changes(change_set.changes))
     action_counter = Counter(
         [resource_change.action for resource_change in resource_change_list]
     )
+
+    # --- Statistics
     if _verbose:  # pragma: no cover
         print_header("Change Set Statistics", "-", 80, "+")
     for change_action in ChangeActionEnum:
@@ -189,9 +213,9 @@ def visualize_change_set(
         print("|")
         print("+" + "-" * 80)
 
+    # --- Details
     if _verbose:  # pragma: no cover
         print_header("Changes", "-", 80, "+")
-
 
     if len(resource_change_list):
         max_logic_resource_id_length = max([
@@ -222,3 +246,17 @@ def visualize_change_set(
     if _verbose:  # pragma: no cover
         print("|")
         print("+" + "-" * 80)
+
+    # --- Nested stack
+    if include_nested_stack:
+        for resource_change in resource_change_list:
+            if resource_change.change_set_id is not None:
+                response = describe_change_set(
+                    bsm=bsm,
+                    change_set_name=resource_change.change_set_id,
+                )
+                visualize_change_set(
+                    change_set=ChangeSet.from_dict(response),
+                    bsm=bsm,
+                    include_nested_stack=include_nested_stack,
+                )

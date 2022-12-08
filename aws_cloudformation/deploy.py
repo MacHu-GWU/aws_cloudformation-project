@@ -35,7 +35,7 @@ from .console import (
     get_stack_details_console_url,
     get_change_set_console_url,
 )
-from .change_set_visualizer import print_header, visualize_change_set
+from .change_set_visualizer import print_header, ChangeSet, visualize_change_set
 
 
 def prompt_to_proceed() -> bool:
@@ -185,6 +185,7 @@ def _deploy_stack_using_change_set(
     resource_types: T.Optional[T.List[str]] = None,
     client_request_token: T.Optional[str] = None,
     disable_rollback: T.Optional[bool] = None,
+    plan_nested_stack: bool = True,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
@@ -213,7 +214,7 @@ def _deploy_stack_using_change_set(
         resource_types=resource_types,
         change_set_type=ChangeSetTypeEnum.CREATE.value,
         client_request_token=client_request_token,
-        disable_rollback=disable_rollback,
+        include_nested_stack=plan_nested_stack,
         verbose=verbose,
     )
 
@@ -257,7 +258,11 @@ def _deploy_stack_using_change_set(
             verbose=verbose,
         )
         if verbose:
-            visualize_change_set(response["Changes"])
+            visualize_change_set(
+                change_set=ChangeSet.from_dict(response),
+                bsm=bsm,
+                include_nested_stack=plan_nested_stack,
+            )
     except TimeoutError as e:
         raise e
     except exc.CreateStackChangeSetButNotChangeError as e:
@@ -329,6 +334,7 @@ def deploy_stack(
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
+    plan_nested_stack: bool = True,
     skip_plan: bool = False,
     skip_prompt: bool = False,
     change_set_delays: T.Union[int, float] = DEFAULT_CHANGE_SET_DELAYS,
@@ -440,6 +446,7 @@ def deploy_stack(
             resource_types=resource_types,
             client_request_token=client_request_token,
             disable_rollback=disable_rollback,
+            plan_nested_stack=plan_nested_stack,
             wait=wait,
             delays=delays,
             timeout=timeout,

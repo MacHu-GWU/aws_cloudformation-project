@@ -22,7 +22,12 @@ Backlog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
+- add support to visualize change set for nested stack
+- expose more useful functions / classes as public API
+
 **Minor Improvements**
+
+- more integration test using real AWS CloudFormation
 
 **Bugfixes**
 

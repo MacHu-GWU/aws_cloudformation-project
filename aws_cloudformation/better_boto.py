@@ -500,8 +500,8 @@ def create_change_set(
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     resource_types: T.Optional[T.List[str]] = None,
     change_set_type: T.Optional[ChangeSetTypeEnum] = None,
+    include_nested_stack: T.Optional[bool] = None,
     client_request_token: T.Optional[str] = None,
-    disable_rollback: T.Optional[bool] = None,
     verbose: bool = True,
 ) -> T.Tuple[str, str, str]:
     """
@@ -512,7 +512,7 @@ def create_change_set(
 
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.create_change_set
 
-    TODO: add nested stack support
+    TODO: add resources to import support; add nested stack support
 
     :param bsm:
     :param stack_name:
@@ -531,8 +531,8 @@ def create_change_set(
     :param prefix_stack_policy:
     :param resource_types:
     :param change_set_type:
+    :param include-Nested_stacks:
     :param client_request_token:
-    :param disable_roll_back:
 
     :return: stack_id and change_set_id
     """
@@ -572,9 +572,9 @@ def create_change_set(
     if change_set_type is not None:
         kwargs["ChangeSetType"] = change_set_type
 
-    # DisableRollback
-    if disable_rollback is not None:
-        kwargs["DisableRollback"] = disable_rollback
+    # IncludeNestedStacks
+    if include_nested_stack is not None:
+        kwargs["IncludeNestedStacks"] = include_nested_stack
 
     cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
     response = cf_client.create_change_set(**kwargs)
