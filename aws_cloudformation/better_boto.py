@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 
 from boto_session_manager import BotoSesManager, AwsServiceEnum
+from colorama import Fore, Style
 
 from . import exc
 from . import helper
@@ -685,7 +686,7 @@ def wait_create_or_update_stack_to_finish(
     :return: a :class:`~aws_cottonformation.stack.Stack` object.
     """
     if verbose:
-        print("  wait for deploy to finish ...")
+        print(f" {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} ...")
     for _ in Waiter(
         delays=delays,
         timeout=timeout,
@@ -699,7 +700,7 @@ def wait_create_or_update_stack_to_finish(
                     icon = "🟢"
                 else:
                     icon = "🔴"
-                print(f"\n    reached status {icon} {stack.status.value!r}")
+                print(f"\n    reached status {icon} {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}")
             return stack
 
 
@@ -724,7 +725,7 @@ def wait_delete_stack_to_finish(
     :return: Nothing
     """
     if verbose:
-        print("  wait for delete to finish ...")
+        print(f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} ...")
     for _ in Waiter(
         delays=delays,
         timeout=timeout,
@@ -739,7 +740,7 @@ def wait_delete_stack_to_finish(
         else:
             if stack.status.is_stopped():
                 if verbose:
-                    print(f"\n    reached status {stack.status.value}")
+                    print(f"\n    reached status {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}")
             return
 
 
@@ -764,7 +765,7 @@ def wait_create_change_set_to_finish(
     :return:
     """
     if verbose:
-        print("  wait for change set creation to finish ...")
+        print(f"  {Fore.CYAN}wait for change set creation to finish{Style.RESET_ALL} ...")
 
     for _ in Waiter(
         delays=delays,
@@ -783,7 +784,7 @@ def wait_create_change_set_to_finish(
             ChangeSetStatusEnum.FAILED.value,
         ]:
             if verbose:
-                print(f"\n    reached status {change_set_status}")
+                print(f"\n    reached status {Fore.CYAN}{change_set_status}{Style.RESET_ALL}")
 
             if change_set_status == ChangeSetStatusEnum.FAILED.value:
                 status_reason = response["StatusReason"]

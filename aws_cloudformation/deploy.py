@@ -7,6 +7,7 @@ Implement the fancy deployment and remove API with "terraform plan" liked featur
 import typing as T
 
 from boto_session_manager import BotoSesManager
+from colorama import Fore, Style
 
 from . import exc
 from .better_boto import (
@@ -26,6 +27,7 @@ from .better_boto import (
     wait_create_or_update_stack_to_finish,
     wait_delete_stack_to_finish,
     wait_create_change_set_to_finish,
+    StackStatusEnum,
     ChangeSetTypeEnum,
 )
 from .console import (
@@ -100,12 +102,20 @@ def _deploy_stack_without_change_set(
         )
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack_id)
-            print(f"  preview **create stack progress** at: {console_url}")
+            print(f"  preview {Fore.CYAN}create stack progress{Style.RESET_ALL} at: {console_url}")
     # already exists, do update
     else:
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack.id)
-            print(f"  preview **update stack progress** at: {console_url}")
+            print(f"  preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}")
+
+        if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
+            raise ValueError(
+                f"You cannot update a stack when status is {StackStatusEnum.REVIEW_IN_PROGRESS.value}! "
+                f"It could be because you created the stack using change set, "
+                f"but never take action to approve or deny it. "
+                f"You can delete it and retry."
+            )
 
         if skip_prompt is False:
             if prompt_to_proceed() is False:
@@ -206,6 +216,14 @@ def _deploy_stack_using_change_set(
         create_change_set_kwargs["change_set_type"] = ChangeSetTypeEnum.CREATE.value
     # already exist, do update
     else:
+        if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
+            raise ValueError(
+                f"You cannot update a stack when status is {StackStatusEnum.REVIEW_IN_PROGRESS.value}! "
+                f"It could be because you created the stack using change set, "
+                f"but never take action to approve or deny it. "
+                f"You can delete it and retry."
+            )
+
         action = "update"
         create_change_set_kwargs["change_set_type"] = ChangeSetTypeEnum.UPDATE.value
 
@@ -218,7 +236,7 @@ def _deploy_stack_using_change_set(
             stack_id=stack_id,
             change_set_id=change_set_id,
         )
-        print(f"  preview **change set details** at: {console_url}")
+        print(f"  preview {Fore.CYAN}change set details{Style.RESET_ALL} at: {console_url}")
 
     try:
         response = wait_create_change_set_to_finish(
@@ -256,7 +274,7 @@ def _deploy_stack_using_change_set(
 
     if verbose:
         console_url = get_stack_details_console_url(stack_id=stack_id)
-        print(f"  preview **{action} stack progress** at: {console_url}")
+        print(f"  preview {Fore.CYAN}{action} stack progress{Style.RESET_ALL} at: {console_url}")
 
     response = execute_change_set(
         bsm=bsm,
@@ -339,7 +357,7 @@ def deploy_stack(
     .. versionadded:: 0.1.1
     """
     if verbose:
-        print_header(f"Deploy stack: {stack_name!r}", "=", 80)
+        print_header(f"{Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}", "=", 80)
         console_url = get_stacks_view_console_url(stack_name=stack_name)
         print(f"  preview stack in AWS CloudFormation console: {console_url}")
 
@@ -430,7 +448,7 @@ def remove_stack(
     
     .. versionadded:: 0.1.1
     """
-    print_header(f"Remove stack {stack_name!r}", "=", 80)
+    print_header(f"{Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}", "=", 80)
 
     if verbose:
         console_url = get_stacks_view_console_url(stack_name)

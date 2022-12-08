@@ -5,6 +5,8 @@ import enum
 import dataclasses
 from collections import Counter
 
+from colorama import Fore, Style
+
 
 class TargetAttributeEnum(enum.Enum):
     PROPERTIES = "Properties"
@@ -208,7 +210,7 @@ def visualize_change_set(
         if _verbose:  # pragma: no cover
             action_ = f"{action} Resource:"
             print(
-                f"| {icon} 📦 {action_:<21}{logical_resource_id:<{max_logic_resource_id_length+4}}{resource_type}"
+                f"| {icon} 📦 {action_:<21}{Fore.CYAN}{logical_resource_id:<{max_logic_resource_id_length+4}}{Style.RESET_ALL}{resource_type}"
             )
         for detail in resource_change.details:
             attribute = detail.target.attribute
@@ -216,7 +218,7 @@ def visualize_change_set(
             if _verbose:
                 key = attribute + ":"
                 if name:
-                    identifier = f"{resource_type}.{name}"
+                    identifier = f"{resource_type}.{Fore.CYAN}{name}{Style.RESET_ALL}"
                 else:
                     identifier = resource_type
                 print(f"|     {icon} 💡 {key:<17}{logical_resource_id:<{max_logic_resource_id_length+4}}{identifier}")

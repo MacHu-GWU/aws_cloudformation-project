@@ -20,7 +20,7 @@ def test_deploy_stack():
     #     # skip_plan=False, # by default, it does plan first
     #     # wait=True, # by default, it waits the update to finish
     # )
-    #
+
     # deploy_stack(
     #     bsm,
     #     stack_name=stack_name,
@@ -29,7 +29,7 @@ def test_deploy_stack():
     #     # skip_plan=False,
     #     # wait=True,
     # )
-    #
+
     # deploy_stack(
     #     bsm,
     #     stack_name=stack_name,
@@ -38,12 +38,12 @@ def test_deploy_stack():
     #     # skip_plan=False,
     #     # wait=True,
     # )
-    #
-    # remove_stack(
-    #     bsm,
-    #     stack_name=stack_name,
-    #     skip_prompt=True,
-    # )
+
+    remove_stack(
+        bsm,
+        stack_name=stack_name,
+        skip_prompt=True,
+    )
 
 
 if __name__ == "__main__":
