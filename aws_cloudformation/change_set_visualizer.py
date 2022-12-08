@@ -187,14 +187,19 @@ def visualize_change_set(
             if _verbose:  # pragma: no cover
                 print(f"| {icon} {change_action.value:<10} {count} {res_}")
     if _verbose:  # pragma: no cover
+        print("|")
         print("+" + "-" * 80)
 
     if _verbose:  # pragma: no cover
         print_header("Changes", "-", 80, "+")
-    max_logic_resource_id_length = max([
-        len(resource_change.logical_resource_id)
-        for resource_change in resource_change_list
-    ])
+
+
+    if len(resource_change_list):
+        max_logic_resource_id_length = max([
+            len(resource_change.logical_resource_id)
+            for resource_change in resource_change_list
+        ])
+
     for resource_change in resource_change_list:
         action = resource_change.action
         icon = icon_mapper[action]
@@ -216,4 +221,5 @@ def visualize_change_set(
                     identifier = resource_type
                 print(f"|     {icon} ✏️ {key:<17}{logical_resource_id:<{max_logic_resource_id_length+4}}{identifier}")
     if _verbose:  # pragma: no cover
+        print("|")
         print("+" + "-" * 80)
