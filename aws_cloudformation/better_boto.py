@@ -9,17 +9,11 @@ import typing as T
 import sys
 from datetime import datetime
 
-from rich import print as rprint
 from boto_session_manager import BotoSesManager, AwsServiceEnum
 
 from . import exc
 from . import helper
 from .waiter import Waiter
-from .console import (
-    get_stacks_view_console_url,
-    get_stack_details_console_url,
-    get_change_set_console_url,
-)
 from .stack import (
     StackStatusEnum,
     Parameter,
@@ -32,6 +26,13 @@ from .stack import (
 
 
 def from_describe_stacks(data: dict) -> Stack:
+    """
+    Create a :class:`~aws_cottonformation.stack.Stack` object from the
+    ``describe_stacks`` API response.
+
+    :param data:
+    :return:
+    """
     return Stack(
         id=data["StackId"],
         name=data["StackName"],
@@ -551,6 +552,50 @@ def create_change_set(
     return stack_id, change_set_id, change_set_name
 
 
+def describe_change_set(
+    bsm: "BotoSesManager",
+    change_set_name: str,
+    stack_name: T.Optional[str] = None,
+) -> dict:
+    """
+    A wrapper provider more user-friendly API and type hint for
+    cloudformation client ``describe_change_set`` method.
+
+    Ref:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_change_set
+
+    :param bsm:
+    :param change_set_name:
+    :param stack_name:
+    :return:
+    """
+    kwargs = dict(
+        ChangeSetName=change_set_name,
+    )
+    if stack_name is not None:
+        kwargs["StackName"] = stack_name
+    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
+    return cf_client.describe_change_set(**kwargs)
+
+
+def describe_change_set_with_paginator(
+    bsm: "BotoSesManager",
+    change_set_name: str,
+    stack_name: T.Optional[str] = None,
+) -> T.Iterable[dict]:
+    kwargs = dict(
+        ChangeSetName=change_set_name,
+    )
+    if stack_name is not None:
+        kwargs["StackName"] = stack_name
+    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
+    paginator = cf_client.get_paginator("describe_change_set")
+    response_iterator = paginator.paginate(**kwargs)
+    for response in response_iterator:
+        yield response
+
+
 def execute_change_set(
     bsm: "BotoSesManager",
     change_set_name: str,
@@ -558,6 +603,21 @@ def execute_change_set(
     client_request_token: T.Optional[str] = None,
     disable_rollback: T.Optional[bool] = None,
 ):
+    """
+    A wrapper provider more user-friendly API and type hint for
+    cloudformation client ``execute_change_set`` method.
+
+    Ref:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.execute_change_set
+
+    :param bsm:
+    :param change_set_name:
+    :param stack_name:
+    :param client_request_token:
+    :param disable_rollback:
+    :return:
+    """
     kwargs = dict(ChangeSetName=change_set_name)
 
     if stack_name is not None:
@@ -578,6 +638,21 @@ def delete_stack(
     role_arn: T.Optional[bool] = None,
     client_request_token: T.Optional[str] = None,
 ):
+    """
+    A wrapper provider more user-friendly API and type hint for
+    cloudformation client ``delete_stack`` method.
+
+    Ref:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.delete_stack
+
+    :param bsm:
+    :param stack_name:
+    :param retain_resources:
+    :param role_arn:
+    :param client_request_token:
+    :return:
+    """
     kwargs = dict(StackName=stack_name)
     if retain_resources is not None:
         kwargs["RetainResources"] = retain_resources
@@ -595,7 +670,20 @@ def wait_create_or_update_stack_to_finish(
     delays: T.Union[int, float],
     timeout: T.Union[int, float],
     verbose: bool,
-):
+) -> Stack:
+    """
+    You can run this function after you run :func:`create_stack` or
+    :func:`update_stack`. It will wait until the stack change success, fail,
+    or timeout.
+
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param stack_name: the stack name or unique stack id
+    :param delays: how long it waits (in seconds) between two "get status" api call
+    :param timeout: how long it will raise timeout error
+    :param verbose: whether you want to log information to console
+
+    :return: a :class:`~aws_cottonformation.stack.Stack` object.
+    """
     if verbose:
         print("  wait for deploy to finish ...")
     for _ in Waiter(
@@ -607,7 +695,51 @@ def wait_create_or_update_stack_to_finish(
         stack = describe_live_stack(bsm, stack_name)
         if stack.status.is_stopped():
             if verbose:
-                print(f"\n    reached status {stack.status.value}")
+                if stack.status.is_success():
+                    icon = "🟢"
+                else:
+                    icon = "🔴"
+                print(f"\n    reached status {icon} {stack.status.value!r}")
+            return stack
+
+
+def wait_delete_stack_to_finish(
+    bsm: "BotoSesManager",
+    stack_id: str,
+    delays: T.Union[int, float],
+    timeout: T.Union[int, float],
+    verbose: bool,
+):
+    """
+    You can run this function after you run :func:`delete_stack`. It will
+    wait until the stack deletion success or fail.
+    or timeout.
+
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param stack_id: the unique stack id
+    :param delays: how long it waits (in seconds) between two "get status" api call
+    :param timeout: how long it will raise timeout error
+    :param verbose: whether you want to log information to console
+
+    :return: Nothing
+    """
+    if verbose:
+        print("  wait for delete to finish ...")
+    for _ in Waiter(
+        delays=delays,
+        timeout=timeout,
+        indent=4,
+        verbose=verbose,
+    ):
+        stack = describe_live_stack(bsm, stack_id)
+        if stack is None:
+            if verbose:
+                print(f"\n    already deleted.")
+            return
+        else:
+            if stack.status.is_stopped():
+                if verbose:
+                    print(f"\n    reached status {stack.status.value}")
             return
 
 
@@ -618,32 +750,59 @@ def wait_create_change_set_to_finish(
     delays: T.Union[int, float],
     timeout: T.Union[int, float],
     verbose: bool,
-):
+) -> dict:
+    """
+    You can run this function after you run :func:`create_change_set`. It will
+    wait until the change set creation success, fail, or timeout.
+
+    :param bsm:
+    :param stack_name:
+    :param change_set_id:
+    :param delays:
+    :param timeout:
+    :param verbose:
+    :return:
+    """
     if verbose:
         print("  wait for change set creation to finish ...")
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
+
     for _ in Waiter(
         delays=delays,
         timeout=timeout,
         indent=4,
         verbose=verbose,
     ):
-        res = cf_client.describe_change_set(
-            StackName=stack_name,
-            ChangeSetName=change_set_id,
+        response = describe_change_set(
+            bsm=bsm,
+            change_set_name=change_set_id,
+            stack_name=stack_name,
         )
-        change_set_status = res["Status"]
+        change_set_status = response["Status"]
         if change_set_status in [
             ChangeSetStatusEnum.CREATE_COMPLETE.value,
             ChangeSetStatusEnum.FAILED.value,
         ]:
             if verbose:
                 print(f"\n    reached status {change_set_status}")
+
             if change_set_status == ChangeSetStatusEnum.FAILED.value:
-                status_reason = res["StatusReason"]
+                status_reason = response["StatusReason"]
                 if "The submitted information didn't contain changes." in status_reason:
                     raise exc.CreateStackChangeSetButNotChangeError(status_reason)
                 else:
                     raise exc.CreateStackChangeSetFailedError(status_reason)
-            print(res["Changes"])
-            return
+
+            if bool(response.get("NextToken")) and (
+                bool(len(response.get("Changes", [])))
+            ):
+                changes = list()
+                for res in describe_change_set_with_paginator(
+                    bsm=bsm,
+                    change_set_name=change_set_id,
+                    stack_name=stack_name,
+                ):
+                    changes.extend(res.get("Changes", []))
+                res["Changes"] = changes
+                return res
+            else:
+                return response
