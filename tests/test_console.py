@@ -20,15 +20,15 @@ def test_parse_stack_id():
 
 def test_get_stacks_view_console_url():
     console_url = get_stacks_view_console_url()
-    print(console_url)
+    # print(console_url)
 
     console_url = get_stacks_view_console_url(stack_name="CDKToolkit")
-    print(console_url)
+    # print(console_url)
 
     console_url = get_stacks_view_console_url(
         stack_name="CDKToolkit", aws_region="us-east-1"
     )
-    print(console_url)
+    # print(console_url)
 
 
 def test_get_stack_details_console_url():
