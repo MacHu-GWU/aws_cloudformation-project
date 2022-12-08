@@ -5,6 +5,9 @@ from cottonformation.res import secretsmanager
 
 
 def make_tpl_1() -> cf.Template:
+    """
+    Create Secret1
+    """
     tpl = cf.Template()
 
     secret1 = secretsmanager.Secret(
@@ -22,6 +25,10 @@ def make_tpl_1() -> cf.Template:
 
 
 def make_tpl_2() -> cf.Template:
+    """
+    Modify Secret1
+    Create Secret222
+    """
     tpl = make_tpl_1()
 
     secret1: secretsmanager.Secret = tpl.Resources["Secret1"]
@@ -48,6 +55,11 @@ def make_tpl_2() -> cf.Template:
 
 
 def make_tpl_3() -> cf.Template:
+    """
+    Delete Secret1
+    Modify Secret222
+    Create Secret33333
+    """
     tpl = make_tpl_2()
 
     tpl.remove(tpl.Resources["Secret1"])

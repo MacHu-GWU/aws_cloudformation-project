@@ -66,6 +66,9 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
 
 
     def make_tpl_1() -> cf.Template:
+        """
+        Create Secret1
+        """
         tpl = cf.Template()
 
         secret1 = secretsmanager.Secret(
@@ -83,6 +86,10 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
 
 
     def make_tpl_2() -> cf.Template:
+        """
+        Modify Secret1
+        Create Secret222
+        """
         tpl = make_tpl_1()
 
         secret1: secretsmanager.Secret = tpl.Resources["Secret1"]
@@ -109,6 +116,11 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
 
 
     def make_tpl_3() -> cf.Template:
+        """
+        Delete Secret1
+        Modify Secret222
+        Create Secret33333
+        """
         tpl = make_tpl_2()
 
         tpl.remove(tpl.Resources["Secret1"])
@@ -179,33 +191,29 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
 
     ============== Deploy stack: 'cottonformation-deploy-stack-test' ===============
       preview stack in AWS CloudFormation console: https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false
-      preview **change set details** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0b6fdc90-76b2-11ed-a3ff-0ab7cc53f435&changeSetId=arn:aws:cloudformation:us-east-1:111122223333:changeSet/cottonformation-deploy-stack-test-2022-12-08-04-39-34-972/d0ff7dfa-0b58-4454-90ae-02d628c5532b
+      preview **change set details** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0c5596c0-76b4-11ed-92b1-0a0bcad48579&changeSetId=arn:aws:cloudformation:us-east-1:111122223333:changeSet/cottonformation-deploy-stack-test-2022-12-08-04-51-58-892/8c88d0c1-d5c7-495b-820e-29e5752a04d4
       wait for change set creation to finish ...
         on 1 th attempt, elapsed 5 seconds, remain 55 seconds ...
         reached status CREATE_COMPLETE
     +---------------------------- Change Set Statistics -----------------------------
-    | 🔵 Modify     1 Resource
-    | 🔴 Remove     1 Resource
+    | 🟢 Add        1 Resource
     |
     +--------------------------------------------------------------------------------
     +----------------------------------- Changes ------------------------------------
-    | 🔵 📦 Modify Resource:     Secret1      AWS::SecretsManager::Secret
-    |     🔵 💡 Properties:      Secret1      AWS::SecretsManager::Secret.Description
-    |     🔵 💡 Tags:            Secret1      AWS::SecretsManager::Secret
-    | 🔴 📦 Remove Resource:     Secret222    AWS::SecretsManager::Secret
+    | 🟢 📦 Add Resource:        Secret1    AWS::SecretsManager::Secret
     |
     +--------------------------------------------------------------------------------
         need to execute the change set to apply those changes.
-      preview **update stack progress** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false&stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0b6fdc90-76b2-11ed-a3ff-0ab7cc53f435&filteringStatus=active
+      preview **create stack progress** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false&stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0c5596c0-76b4-11ed-92b1-0a0bcad48579&filteringStatus=active
       wait for deploy to finish ...
-        on 3 th attempt, elapsed 15 seconds, remain 45 seconds ...
-        reached status 🟢 'UPDATE_COMPLETE'
+        on 2 th attempt, elapsed 10 seconds, remain 50 seconds ...
+        reached status 🟢 'CREATE_COMPLETE'
       done
 
 
     ============== Deploy stack: 'cottonformation-deploy-stack-test' ===============
       preview stack in AWS CloudFormation console: https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false
-      preview **change set details** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0b6fdc90-76b2-11ed-a3ff-0ab7cc53f435&changeSetId=arn:aws:cloudformation:us-east-1:111122223333:changeSet/cottonformation-deploy-stack-test-2022-12-08-04-39-55-867/00a09ad2-d8ba-4323-82d7-c4becb00b645
+      preview **change set details** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0c5596c0-76b4-11ed-92b1-0a0bcad48579&changeSetId=arn:aws:cloudformation:us-east-1:111122223333:changeSet/cottonformation-deploy-stack-test-2022-12-08-04-52-39-134/8e1fd139-7a37-43dd-9378-40a328970036
       wait for change set creation to finish ...
         on 1 th attempt, elapsed 5 seconds, remain 55 seconds ...
         reached status CREATE_COMPLETE
@@ -222,32 +230,38 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
     |
     +--------------------------------------------------------------------------------
         need to execute the change set to apply those changes.
-      preview **update stack progress** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false&stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0b6fdc90-76b2-11ed-a3ff-0ab7cc53f435&filteringStatus=active
+      preview **update stack progress** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false&stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0c5596c0-76b4-11ed-92b1-0a0bcad48579&filteringStatus=active
       wait for deploy to finish ...
-        on 6 th attempt, elapsed 30 seconds, remain 30 seconds ...
-        reached status 🔴 'UPDATE_ROLLBACK_COMPLETE'
+        on 3 th attempt, elapsed 15 seconds, remain 45 seconds ...
+        reached status 🟢 'UPDATE_COMPLETE'
       done
 
 
     ============== Deploy stack: 'cottonformation-deploy-stack-test' ===============
       preview stack in AWS CloudFormation console: https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false
-      preview **change set details** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0b6fdc90-76b2-11ed-a3ff-0ab7cc53f435&changeSetId=arn:aws:cloudformation:us-east-1:111122223333:changeSet/cottonformation-deploy-stack-test-2022-12-08-04-40-31-881/1df8e919-8b21-47ad-a496-f7ddc3a574a4
+      preview **change set details** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0c5596c0-76b4-11ed-92b1-0a0bcad48579&changeSetId=arn:aws:cloudformation:us-east-1:111122223333:changeSet/cottonformation-deploy-stack-test-2022-12-08-04-53-07-499/6edbcdf2-8e27-463f-bc5f-35587463fceb
       wait for change set creation to finish ...
-        on 1 th attempt, elapsed 5 seconds, remain 55 seconds ...
+        on 2 th attempt, elapsed 10 seconds, remain 50 seconds ...
         reached status CREATE_COMPLETE
     +---------------------------- Change Set Statistics -----------------------------
-    | 🟢 Add        2 Resources
+    | 🟢 Add        1 Resource
+    | 🔵 Modify     1 Resource
     | 🔴 Remove     1 Resource
     |
     +--------------------------------------------------------------------------------
     +----------------------------------- Changes ------------------------------------
-    | 🟢 📦 Add Resource:        Secret222      AWS::SecretsManager::Secret
     | 🟢 📦 Add Resource:        Secret33333    AWS::SecretsManager::Secret
+    | 🔵 📦 Modify Resource:     Secret222      AWS::SecretsManager::Secret
+    |     🔵 💡 Properties:      Secret222      AWS::SecretsManager::Secret.Description
+    |     🔵 💡 Metadata:        Secret222      AWS::SecretsManager::Secret
+    |     🔵 💡 CreationPolicy:  Secret222      AWS::SecretsManager::Secret
+    |     🔵 💡 UpdatePolicy:    Secret222      AWS::SecretsManager::Secret
+    |     🔵 💡 Tags:            Secret222      AWS::SecretsManager::Secret
     | 🔴 📦 Remove Resource:     Secret1        AWS::SecretsManager::Secret
     |
     +--------------------------------------------------------------------------------
         need to execute the change set to apply those changes.
-      preview **update stack progress** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false&stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0b6fdc90-76b2-11ed-a3ff-0ab7cc53f435&filteringStatus=active
+      preview **update stack progress** at: https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false&stackId=arn:aws:cloudformation:us-east-1:111122223333:stack/cottonformation-deploy-stack-test/0c5596c0-76b4-11ed-92b1-0a0bcad48579&filteringStatus=active
       wait for deploy to finish ...
         on 3 th attempt, elapsed 15 seconds, remain 45 seconds ...
         reached status 🟢 'UPDATE_COMPLETE'
@@ -257,7 +271,9 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
     =============== Remove stack 'cottonformation-deploy-stack-test' ===============
       preview stack in AWS CloudFormation console: https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=cottonformation-deploy-stack-test&viewNested=true&hideStacks=false
       wait for delete to finish ...
-        on 1 th attempt, elapsed 5 seconds, remain 55 seconds ...  done
+        on 1 th attempt, elapsed 5 seconds, remain 55 seconds ...
+        already deleted.
+      done
 
 
 .. _install:
