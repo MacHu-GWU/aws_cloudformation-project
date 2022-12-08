@@ -162,7 +162,9 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
         bsm,
         stack_name=stack_name,
         template=make_tpl_1().to_json(),
-        skip_prompt=True,
+        skip_prompt=True, # by default, it prompt user input for YES / NO to proceed
+        # skip_plan=False, # by default, it does plan first
+        # wait=True, # by default, it waits the update to finish
     )
 
     deploy_stack(
@@ -170,6 +172,8 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
         stack_name=stack_name,
         template=make_tpl_2().to_json(),
         skip_prompt=True,
+        # skip_plan=False,
+        # wait=True,
     )
 
     deploy_stack(
@@ -177,6 +181,8 @@ Enable ``terraform plan``, ``terraform apply`` styled deployment.
         stack_name=stack_name,
         template=make_tpl_3().to_json(),
         skip_prompt=True,
+        # skip_plan=False,
+        # wait=True,
     )
 
     remove_stack(
