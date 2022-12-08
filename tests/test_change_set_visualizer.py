@@ -33,7 +33,7 @@ class TestWaiter:
                 "Type": "Resource",
                 "ResourceChange": {
                     "Action": "Remove",
-                    "LogicalResourceId": "IamGroup2",
+                    "LogicalResourceId": "IamGroup222",
                     "PhysicalResourceId": "Group2",
                     "ResourceType": "AWS::IAM::Group",
                     "Scope": [],
@@ -44,14 +44,14 @@ class TestWaiter:
                 "Type": "Resource",
                 "ResourceChange": {
                     "Action": "Add",
-                    "LogicalResourceId": "IamGroup3",
+                    "LogicalResourceId": "IamGroup33333",
                     "ResourceType": "AWS::IAM::Group",
                     "Scope": [],
                     "Details": [],
                 },
             },
         ]
-        visualize_change_set(changes, _verbose=True)
+        visualize_change_set(changes, _verbose=False)
 
 
 if __name__ == "__main__":

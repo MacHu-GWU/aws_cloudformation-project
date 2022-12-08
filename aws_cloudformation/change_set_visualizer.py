@@ -214,6 +214,6 @@ def visualize_change_set(
                     identifier = f"{resource_type}.{name}"
                 else:
                     identifier = resource_type
-                print(f"|     {icon} ✏️ {key:<{max_logic_resource_id_length+20}} {identifier}")
+                print(f"|     {icon} ✏️ {key:<17}{logical_resource_id:<{max_logic_resource_id_length+4}}{identifier}")
     if _verbose:  # pragma: no cover
         print("+" + "-" * 80)
