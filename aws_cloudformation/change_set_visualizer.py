@@ -148,9 +148,13 @@ icon_mapper = {
 }
 
 
-def print_header(msg: str, char: str, length: int):
+def print_header(msg: str, char: str, length: int, corner_char=""):
     msg = f" {msg} "
-    template = "{{msg:{char}^{length}}}".format(char=char, length=length)
+    template = "{corner_char}{{msg:{char}^{length}}}".format(
+        char=char,
+        length=length,
+        corner_char=corner_char,
+    )
     print(template.format(msg=msg))
 
 
@@ -171,7 +175,7 @@ def visualize_change_set(
         [resource_change.action for resource_change in resource_change_list]
     )
     if _verbose:  # pragma: no cover
-        print_header("Change Set Statistics", "-", 80)
+        print_header("Change Set Statistics", "-", 80, "+")
     for change_action in ChangeActionEnum:
         if change_action.value in action_counter:
             icon = icon_mapper[change_action.value]
@@ -181,21 +185,35 @@ def visualize_change_set(
             else:
                 res_ = "Resource"
             if _verbose:  # pragma: no cover
-                print(f"{icon} {change_action.value} {count} {res_}")
+                print(f"| {icon} {change_action.value:<10} {count} {res_}")
+    if _verbose:  # pragma: no cover
+        print("+" + "-" * 80)
 
     if _verbose:  # pragma: no cover
-        print_header("Changes", "-", 80)
+        print_header("Changes", "-", 80, "+")
+    max_logic_resource_id_length = max([
+        len(resource_change.logical_resource_id)
+        for resource_change in resource_change_list
+    ])
     for resource_change in resource_change_list:
         action = resource_change.action
         icon = icon_mapper[action]
         logical_resource_id = resource_change.logical_resource_id
         resource_type = resource_change.resource_type
         if _verbose:  # pragma: no cover
+            action_ = f"{action} Resource:"
             print(
-                f"{icon} 📦 {action} Resource {logical_resource_id!r} ({resource_type})"
+                f"| {icon} 📦 {action_:<21}{logical_resource_id:<{max_logic_resource_id_length+4}}{resource_type}"
             )
         for detail in resource_change.details:
             attribute = detail.target.attribute
             name = detail.target.name
             if _verbose:
-                print(f"  {icon} ✏️ {attribute}: {resource_type}.{name}")
+                key = attribute + ":"
+                if name:
+                    identifier = f"{resource_type}.{name}"
+                else:
+                    identifier = resource_type
+                print(f"|     {icon} ✏️ {key:<{max_logic_resource_id_length+20}} {identifier}")
+    if _verbose:  # pragma: no cover
+        print("+" + "-" * 80)

@@ -51,7 +51,7 @@ class TestWaiter:
                 },
             },
         ]
-        visualize_change_set(changes, _verbose=False)
+        visualize_change_set(changes, _verbose=True)
 
 
 if __name__ == "__main__":
