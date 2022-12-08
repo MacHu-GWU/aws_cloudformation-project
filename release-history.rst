@@ -18,18 +18,31 @@ Backlog
 **Miscellaneous**
 
 
-0.2.1 (TODO)
+1.2.1 (TODO)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
-
-- Add "NestedStack" support
-- Add "Blac
 
 **Minor Improvements**
 
 **Bugfixes**
 
 **Miscellaneous**
+
+
+1.1.1 (2022-12-08)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Minor Improvements**
+
+- Add colorful console log.
+- stablize the API.
+
+**Bugfixes**
+
+- raise exception explicitly when stack status is ``REVIEW_IN_PROGRESS``.
+
+**Miscellaneous**
+
+- Enrich documentation
 
 
 0.1.1 (2022-12-07)

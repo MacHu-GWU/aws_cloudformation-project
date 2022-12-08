@@ -41,9 +41,6 @@ class Target:
             requires_recreation=dct.get("RequiresRecreation"),
         )
 
-    def line(self) -> str:
-        return f"{self.attribute}({self.name})"
-
 
 @dataclasses.dataclass
 class Detail:
@@ -182,7 +179,7 @@ def visualize_change_set(
         if change_action.value in action_counter:
             icon = icon_mapper[change_action.value]
             count = action_counter[change_action.value]
-            if count > 1:
+            if count > 1: # pragma: no cover
                 res_ = "Resources"
             else:
                 res_ = "Resource"

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import pytest
 from aws_cloudformation.change_set_visualizer import visualize_change_set
 
 
@@ -10,32 +9,10 @@ class TestWaiter:
             {
                 "Type": "Resource",
                 "ResourceChange": {
-                    "Action": "Modify",
-                    "LogicalResourceId": "IamGroup1",
-                    "PhysicalResourceId": "Group1",
-                    "ResourceType": "AWS::IAM::Group",
-                    "Replacement": "False",
-                    "Scope": ["Properties"],
-                    "Details": [
-                        {
-                            "Target": {
-                                "Attribute": "Properties",
-                                "Name": "Path",
-                                "RequiresRecreation": "Never",
-                            },
-                            "Evaluation": "Static",
-                            "ChangeSource": "DirectModification",
-                        }
-                    ],
-                },
-            },
-            {
-                "Type": "Resource",
-                "ResourceChange": {
                     "Action": "Remove",
-                    "LogicalResourceId": "IamGroup222",
-                    "PhysicalResourceId": "Group2",
-                    "ResourceType": "AWS::IAM::Group",
+                    "LogicalResourceId": "Secret1",
+                    "PhysicalResourceId": "arn:aws:secretsmanager:us-east-1:669508176277:secret:aws_cft_secret1-DIidyF",
+                    "ResourceType": "AWS::SecretsManager::Secret",
                     "Scope": [],
                     "Details": [],
                 },
@@ -43,9 +20,69 @@ class TestWaiter:
             {
                 "Type": "Resource",
                 "ResourceChange": {
+                    "Action": "Modify",
+                    "LogicalResourceId": "Secret222",
+                    "PhysicalResourceId": "arn:aws:secretsmanager:us-east-1:669508176277:secret:aws_cft_secret2-wicjVX",
+                    "ResourceType": "AWS::SecretsManager::Secret",
+                    "Replacement": "Conditional",
+                    "Scope": [
+                        "UpdatePolicy",
+                        "Metadata",
+                        "CreationPolicy",
+                        "Properties",
+                        "Tags",
+                    ],
+                    "Details": [
+                        {
+                            "Target": {
+                                "Attribute": "Metadata",
+                                "RequiresRecreation": "Never",
+                            },
+                            "Evaluation": "Static",
+                            "ChangeSource": "DirectModification",
+                        },
+                        {
+                            "Target": {
+                                "Attribute": "UpdatePolicy",
+                                "RequiresRecreation": "Never",
+                            },
+                            "Evaluation": "Static",
+                            "ChangeSource": "DirectModification",
+                        },
+                        {
+                            "Target": {
+                                "Attribute": "Properties",
+                                "Name": "Description",
+                                "RequiresRecreation": "Conditionally",
+                            },
+                            "Evaluation": "Static",
+                            "ChangeSource": "DirectModification",
+                        },
+                        {
+                            "Target": {
+                                "Attribute": "Tags",
+                                "RequiresRecreation": "Conditionally",
+                            },
+                            "Evaluation": "Static",
+                            "ChangeSource": "DirectModification",
+                        },
+                        {
+                            "Target": {
+                                "Attribute": "CreationPolicy",
+                                "RequiresRecreation": "Never",
+                            },
+                            "Evaluation": "Static",
+                            "ChangeSource": "DirectModification",
+                        },
+                    ],
+                },
+            },
+            {
+                "Type": "Resource",
+                "ResourceChange": {
                     "Action": "Add",
-                    "LogicalResourceId": "IamGroup33333",
-                    "ResourceType": "AWS::IAM::Group",
+                    "LogicalResourceId": "Secret33333",
+                    "ResourceType": "AWS::SecretsManager::Secret",
                     "Scope": [],
                     "Details": [],
                 },

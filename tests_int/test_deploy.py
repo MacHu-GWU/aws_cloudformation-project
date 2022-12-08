@@ -39,11 +39,11 @@ def test_deploy_stack():
     #     # wait=True,
     # )
 
-    remove_stack(
-        bsm,
-        stack_name=stack_name,
-        skip_prompt=True,
-    )
+    # remove_stack(
+    #     bsm,
+    #     stack_name=stack_name,
+    #     skip_prompt=True,
+    # )
 
 
 if __name__ == "__main__":

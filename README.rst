@@ -51,7 +51,15 @@
 
 Welcome to ``aws_cloudformation`` Documentation
 ==============================================================================
-Enable ``terraform plan``, ``terraform apply`` styled deployment.
+AWS CloudFormation deployment for human, Enable ``terraform plan``, ``terraform apply`` styled deployment.
+
+Features:
+
+1. Preview the change set details before deployment.
+2. Automatically upload big template to S3 before deployment.
+3. Support SYNC call for deployment and deletion, wait until it success or fail (the original API is ASYNC call).
+4. Allow prompt for user to enter "YES" to proceed.
+5. Provide hyperlink for one-click to jump to the Console to preview.
 
 .. contents::
     :class: this-will-duplicate-information-and-it-is-still-useful-here
