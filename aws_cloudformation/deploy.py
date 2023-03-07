@@ -11,7 +11,6 @@ from colorama import Fore, Style
 
 from . import exc
 from .better_boto import (
-    Parameter,
     DEFAULT_S3_PREFIX_FOR_TEMPLATE,
     DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     DEFAULT_UPDATE_DELAYS,
@@ -27,6 +26,9 @@ from .better_boto import (
     wait_create_or_update_stack_to_finish,
     wait_delete_stack_to_finish,
     wait_create_change_set_to_finish,
+)
+from .stack import (
+    Parameter,
     StackStatusEnum,
     ChangeSetTypeEnum,
 )

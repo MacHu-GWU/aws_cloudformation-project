@@ -12,11 +12,11 @@ from datetime import datetime
 from boto_session_manager import BotoSesManager, AwsServiceEnum
 from colorama import Fore, Style
 
-from . import exc
-from . import helper
-from .console import get_s3_console_url
-from .waiter import Waiter
-from .stack import (
+from .. import exc
+from .. import helper
+from ..console import get_s3_console_url
+from ..waiter import Waiter
+from ..stack import (
     StackStatusEnum,
     Parameter,
     Output,
@@ -35,6 +35,9 @@ def from_describe_stacks(data: dict) -> Stack:
     :param data:
     :return:
     """
+    drift_status = data.get("DriftInformation", dict()).get("StackDriftStatus")
+    if drift_status is not None:
+        drift_status = DriftStatusEnum.get_by_name(drift_status)
     return Stack(
         id=data["StackId"],
         name=data["StackName"],
@@ -67,9 +70,7 @@ def from_describe_stacks(data: dict) -> Stack:
         enable_termination_protection=data.get("EnableTerminationProtection"),
         parent_id=data.get("ParentId"),
         root_id=data.get("RootId"),
-        drift_status=DriftStatusEnum.get_by_name(
-            data.get("DriftInformation", dict()).get("StackDriftStatus")
-        ),
+        drift_status=drift_status,
         drift_last_check_time=data.get("DriftInformation", dict()).get(
             "LastCheckTimestamp"
         ),
