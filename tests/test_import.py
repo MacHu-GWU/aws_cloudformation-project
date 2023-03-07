@@ -6,15 +6,27 @@ import pytest
 def test():
     import aws_cloudformation
 
+    _ = aws_cloudformation.better_boto
+
     _ = aws_cloudformation.deploy_stack
     _ = aws_cloudformation.remove_stack
+    _ = aws_cloudformation.deploy_stack_set
 
-    _ = aws_cloudformation.describe_live_stack
     _ = aws_cloudformation.StackStatusEnum
     _ = aws_cloudformation.DriftStatusEnum
     _ = aws_cloudformation.Parameter
     _ = aws_cloudformation.Output
     _ = aws_cloudformation.Stack
+
+    _ = aws_cloudformation.StackSetStatusEnum
+    _ = aws_cloudformation.StackSetPermissionModelEnum
+    _ = aws_cloudformation.StackSetCallAsEnum
+    _ = aws_cloudformation.StackSet
+    _ = aws_cloudformation.StackInstanceStatusEnum
+    _ = aws_cloudformation.DetailedStackInstanceStatusEnum
+    _ = aws_cloudformation.StackInstanceDriftStatusEnum
+    _ = aws_cloudformation.StackInstance
+
     _ = aws_cloudformation.TargetAttributeEnum
     _ = aws_cloudformation.Target
     _ = aws_cloudformation.Detail

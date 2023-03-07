@@ -31,3 +31,10 @@ from .stacks import (
     wait_delete_stack_to_finish,
     wait_create_change_set_to_finish,
 )
+
+from .stacksets import (
+    from_describe_stack_set,
+    describe_stack_set,
+    create_stack_set,
+    update_stack_set,
+)

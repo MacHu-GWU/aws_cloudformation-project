@@ -4,4 +4,5 @@ pytest-cov                              # coverage test
 moto[s3]
 moto[iam]
 moto[cloudformation]
+moto[sts]
 cottonformation>=1.0.1

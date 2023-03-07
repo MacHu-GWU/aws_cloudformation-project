@@ -7,9 +7,12 @@ Implement the fancy deployment and remove API with "terraform plan" liked featur
 import typing as T
 
 from boto_session_manager import BotoSesManager
+from aws_console_url import AWSConsole
 from colorama import Fore, Style
+from func_args import NOTHING, resolve_kwargs
 
 from . import exc
+from . import better_boto
 from .better_boto import (
     DEFAULT_S3_PREFIX_FOR_TEMPLATE,
     DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
@@ -31,6 +34,10 @@ from .stack import (
     Parameter,
     StackStatusEnum,
     ChangeSetTypeEnum,
+)
+from .stack_set import (
+    StackSetPermissionModelEnum,
+    StackSetCallAsEnum,
 )
 from .console import (
     get_stacks_view_console_url,
@@ -535,6 +542,119 @@ def remove_stack(
             stack_id=stack.id,
             delays=delays,
             timeout=timeout,
+            verbose=verbose,
+        )
+
+    if verbose:
+        print("  done")
+
+
+def deploy_stack_set(
+    bsm: "BotoSesManager",
+    stack_set_name: str,
+    description: T.Optional[str] = NOTHING,
+    template_body: T.Optional[str] = NOTHING,
+    template_url: T.Optional[str] = NOTHING,
+    use_previous_template: T.Optional[bool] = NOTHING,
+    stack_id: T.Optional[str] = NOTHING,
+    parameters: T.List[Parameter] = NOTHING,
+    include_iam: bool = False,
+    include_named_iam: bool = False,
+    include_macro: bool = False,
+    tags: dict = NOTHING,
+    operation_preferences: T.Optional[dict] = NOTHING,
+    admin_role_arn: T.Optional[str] = NOTHING,
+    execution_role_name: T.Optional[str] = NOTHING,
+    deployment_target: T.Optional[dict] = NOTHING,
+    permission_model_is_self_managed: bool = False,
+    permission_model_is_service_managed: bool = False,
+    auto_deployment_is_enabled: bool = False,
+    auto_deployment_retain_stacks_on_account_removal: bool = False,
+    operation_id: T.Optional[str] = NOTHING,
+    accounts: T.Optional[T.List[str]] = NOTHING,
+    regions: T.Optional[T.List[str]] = NOTHING,
+    call_as_self: bool = False,
+    call_as_delegated_admin: bool = False,
+    client_request_token: T.Optional[str] = NOTHING,
+    managed_execution_active: bool = False,
+    verbose: bool = True,
+):
+    aws_console = AWSConsole(
+        aws_account_id=bsm.aws_account_id,
+        aws_region=bsm.aws_region,
+        bsm=bsm,
+    )
+    if verbose:
+        print_header(
+            f"{Fore.CYAN}Deploy{Style.RESET_ALL} stack set: {Fore.CYAN}{stack_set_name}{Style.RESET_ALL}",
+            "=",
+            80,
+        )
+        console_url = aws_console.cloudformation.filter_stack(stack_set_name)
+        print(f"  preview stack set in AWS CloudFormation console: {console_url}")
+
+    stack_set = better_boto.describe_stack_set(
+        bsm=bsm,
+        name=stack_set_name,
+        call_as_self=call_as_self,
+        call_as_delegated_admin=call_as_delegated_admin,
+    )
+    if stack_set is None:
+        if verbose:
+            print(f"  {Fore.CYAN}+{Style.RESET_ALL} create stack set ...")
+        better_boto.create_stack_set(
+            bsm=bsm,
+            stack_set_name=stack_set_name,
+            description=description,
+            template_body=template_body,
+            template_url=template_url,
+            stack_id=stack_id,
+            parameters=parameters,
+            include_iam=include_iam,
+            include_named_iam=include_named_iam,
+            include_macro=include_macro,
+            tags=tags,
+            admin_role_arn=admin_role_arn,
+            execution_role_name=execution_role_name,
+            permission_model_is_self_managed=permission_model_is_self_managed,
+            permission_model_is_service_managed=permission_model_is_service_managed,
+            auto_deployment_is_enabled=auto_deployment_is_enabled,
+            auto_deployment_retain_stacks_on_account_removal=auto_deployment_retain_stacks_on_account_removal,
+            call_as_self=call_as_self,
+            call_as_delegated_admin=call_as_delegated_admin,
+            client_request_token=client_request_token,
+            managed_execution_active=managed_execution_active,
+            verbose=verbose,
+        )
+    else:
+        if verbose:
+            print(f"  {Fore.CYAN}+/-{Style.RESET_ALL} update stack set ...")
+        better_boto.update_stack_set(
+            bsm=bsm,
+            stack_set_name=stack_set_name,
+            description=description,
+            template_body=template_body,
+            template_url=template_url,
+            use_previous_template=use_previous_template,
+            parameters=parameters,
+            tags=tags,
+            include_iam=include_iam,
+            include_named_iam=include_named_iam,
+            include_macro=include_macro,
+            operation_preferences=operation_preferences,
+            admin_role_arn=admin_role_arn,
+            execution_role_name=execution_role_name,
+            deployment_target=deployment_target,
+            permission_model_is_self_managed=permission_model_is_self_managed,
+            permission_model_is_service_managed=permission_model_is_service_managed,
+            auto_deployment_is_enabled=auto_deployment_is_enabled,
+            auto_deployment_retain_stacks_on_account_removal=auto_deployment_retain_stacks_on_account_removal,
+            operation_id=operation_id,
+            accounts=accounts,
+            regions=regions,
+            call_as_self=call_as_self,
+            call_as_delegated_admin=call_as_delegated_admin,
+            managed_execution_active=managed_execution_active,
             verbose=verbose,
         )
 

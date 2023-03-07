@@ -14,17 +14,28 @@ __author_email__ = "husanhe@gmail.com"
 __github_username__ = "MacHu-GWU"
 
 try:
+    from . import better_boto
     from .deploy import (
         deploy_stack,
         remove_stack,
+        deploy_stack_set,
     )
-    from .better_boto import describe_live_stack
     from .stack import (
         StackStatusEnum,
         DriftStatusEnum,
         Parameter,
         Output,
         Stack,
+    )
+    from .stack_set import (
+        StackSetStatusEnum,
+        StackSetPermissionModelEnum,
+        StackSetCallAsEnum,
+        StackSet,
+        StackInstanceStatusEnum,
+        DetailedStackInstanceStatusEnum,
+        StackInstanceDriftStatusEnum,
+        StackInstance,
     )
     from .change_set_visualizer import (
         TargetAttributeEnum,

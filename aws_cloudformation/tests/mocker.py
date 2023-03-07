@@ -10,6 +10,7 @@ class BaseTest:
     mock_s3 = moto.mock_s3()
     mock_iam = moto.mock_iam()
     mock_cf = moto.mock_cloudformation()
+    mock_sts = moto.mock_sts()
     bsm: T.Optional[BotoSesManager] = None
 
     @classmethod
@@ -21,12 +22,14 @@ class BaseTest:
         cls.mock_s3.start()
         cls.mock_iam.start()
         cls.mock_cf.start()
+        cls.mock_sts.start()
         cls.bsm = BotoSesManager()
 
         cls.setup_s3_bucket()
 
     @classmethod
     def teardown_class(cls):
-        cls.mock_s3.start()
-        cls.mock_iam.start()
-        cls.mock_cf.start()
+        cls.mock_s3.stop()
+        cls.mock_iam.stop()
+        cls.mock_cf.stop()
+        cls.mock_sts.stop()
