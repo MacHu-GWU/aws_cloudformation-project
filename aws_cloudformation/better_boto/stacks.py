@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-function in this module is to provide a more user-friendly boto3 API call
-without changing the behavior and avoid adding additional feature.
+AWS CloudFormation Stack related operations.
 """
 
 import typing as T

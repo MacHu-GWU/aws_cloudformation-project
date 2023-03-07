@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+"""
+function in this module is to provide a more user-friendly boto3 API call
+without changing the behavior and avoid adding additional feature.
+"""
+
 from .stacks import (
     from_describe_stacks,
     describe_stacks,
