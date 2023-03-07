@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+"""
+Data model for AWS CloudFormation Stack.
+"""
+
 import typing as T
 import enum
 import dataclasses
