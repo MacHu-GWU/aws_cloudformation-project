@@ -11,6 +11,8 @@ from datetime import datetime
 
 
 class StackStatusEnum(enum.Enum):
+    """
+    """
     CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
     CREATE_FAILED = "CREATE_FAILED"
     CREATE_COMPLETE = "CREATE_COMPLETE"
@@ -38,21 +40,33 @@ class StackStatusEnum(enum.Enum):
     IMPORT_ROLLBACK_COMPLETE = "IMPORT_ROLLBACK_COMPLETE"
 
     def is_success(self) -> bool:
+        """
+        """
         return self in _SUCCESS_STATUS
 
     def is_failed(self) -> bool:
+        """
+        """
         return self in _FAILED_STATUS
 
     def is_in_progress(self) -> bool:
+        """
+        """
         return self in _IN_PROGRESS_STATUS
 
     def is_complete(self) -> bool:
+        """
+        """
         return self in _COMPLETE_STATUS
 
     def is_stopped(self) -> bool:
+        """
+        """
         return self in _STOPPED_STATUS
 
     def is_live(self) -> bool:
+        """
+        """
         return not (self in _NOT_LIVE_STATUS)
 
     @classmethod
@@ -169,6 +183,8 @@ class Parameter:
 
 
 class DriftStatusEnum(enum.Enum):
+    """
+    """
     DRIFTED = "DRIFTED"
     IN_SYNC = "IN_SYNC"
     UNKNOWN = "UNKNOWN"
@@ -181,6 +197,8 @@ class DriftStatusEnum(enum.Enum):
 
 @dataclasses.dataclass
 class Stack:
+    """
+    """
     id: str = dataclasses.field()
     name: str = dataclasses.field()
     change_set_id: T.Optional[str] = dataclasses.field(default=None)
@@ -202,6 +220,8 @@ class Stack:
 
 
 class ChangeSetStatusEnum(enum.Enum):
+    """
+    """
     CREATE_PENDING = "CREATE_PENDING"
     CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
     CREATE_COMPLETE = "CREATE_COMPLETE"
@@ -213,6 +233,8 @@ class ChangeSetStatusEnum(enum.Enum):
 
 
 class ChangeSetTypeEnum(enum.Enum):
+    """
+    """
     CREATE = "CREATE"
     UPDATE = "UPDATE"
     IMPORT = "IMPORT"

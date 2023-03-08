@@ -33,7 +33,7 @@ try:
         StackSetCallAsEnum,
         StackSet,
         StackInstanceStatusEnum,
-        DetailedStackInstanceStatusEnum,
+        StackInstanceDetailedStatusEnum,
         StackInstanceDriftStatusEnum,
         StackInstance,
     )

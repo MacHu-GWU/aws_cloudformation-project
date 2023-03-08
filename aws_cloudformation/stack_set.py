@@ -17,6 +17,8 @@ from .stack import (
 
 
 class StackSetStatusEnum(str, enum.Enum):
+    """
+    """
     ACTIVE = "ACTIVE"
     DELETED = "DELETED"
 
@@ -26,6 +28,8 @@ class StackSetStatusEnum(str, enum.Enum):
 
 
 class StackSetPermissionModelEnum(str, enum.Enum):
+    """
+    """
     SERVICE_MANAGED = "SERVICE_MANAGED"
     SELF_MANAGED = "SELF_MANAGED"
 
@@ -37,6 +41,8 @@ class StackSetPermissionModelEnum(str, enum.Enum):
 
 
 class StackSetCallAsEnum(str, enum.Enum):
+    """
+    """
     SELF = "SELF"
     DELEGATED_ADMIN = "DELEGATED_ADMIN"
 
@@ -47,6 +53,8 @@ class StackSetCallAsEnum(str, enum.Enum):
 
 @dataclasses.dataclass
 class StackSet:
+    """
+    """
     id: str = dataclasses.field()
     name: str = dataclasses.field()
     arn: str = dataclasses.field()
@@ -62,8 +70,36 @@ class StackSet:
     managed_execution: dict = dataclasses.field(default_factory=dict)
     regions: T.List[str] = dataclasses.field(default_factory=list)
 
+    @property
+    def is_status_active(self) -> bool:
+        """
+        """
+        return self.status == StackSetStatusEnum.ACTIVE.value
+
+    @property
+    def is_status_deleted(self) -> bool:
+        """
+        """
+        return self.status == StackSetStatusEnum.DELETED.value
+
+    @property
+    def is_self_managed(self) -> bool:
+        """
+        """
+        return self.permission_model == StackSetPermissionModelEnum.SELF_MANAGED.value
+
+    @property
+    def is_service_managed(self) -> bool:
+        """
+        """
+        return (
+            self.permission_model == StackSetPermissionModelEnum.SERVICE_MANAGED.value
+        )
+
 
 class StackInstanceStatusEnum(str, enum.Enum):
+    """
+    """
     CURRENT = "CURRENT"
     OUTDATED = "OUTDATED"
     INOPERABLE = "INOPERABLE"
@@ -75,7 +111,9 @@ class StackInstanceStatusEnum(str, enum.Enum):
         return get_enum_by_name(cls, name)
 
 
-class DetailedStackInstanceStatusEnum(str, enum.Enum):
+class StackInstanceDetailedStatusEnum(str, enum.Enum):
+    """
+    """
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
@@ -86,11 +124,13 @@ class DetailedStackInstanceStatusEnum(str, enum.Enum):
     @classmethod
     def get_by_name(
         cls, name: T.Optional[str]
-    ) -> T.Optional["DetailedStackInstanceStatusEnum"]:
+    ) -> T.Optional["StackInstanceDetailedStatusEnum"]:
         return get_enum_by_name(cls, name)
 
 
 class StackInstanceDriftStatusEnum(str, enum.Enum):
+    """
+    """
     DRIFTED = "DRIFTED"
     IN_SYNC = "IN_SYNC"
     UNKNOWN = "UNKNOWN"
@@ -105,6 +145,8 @@ class StackInstanceDriftStatusEnum(str, enum.Enum):
 
 @dataclasses.dataclass
 class StackInstance:
+    """
+    """
     stack_set_id: str = dataclasses.field()
     stack_id: str = dataclasses.field()
     aws_region: str = dataclasses.field()
@@ -120,8 +162,55 @@ class StackInstance:
     last_drift_check_timestamp: T.Optional[datetime] = dataclasses.field(default=None)
     last_operation_id: T.Optional[str] = dataclasses.field(default=None)
 
+    def is_status_current(self) -> bool:
+        """
+        """
+        return self.status == StackInstanceStatusEnum.CURRENT.value
+
+    def is_status_outdated(self) -> bool:
+        """
+        """
+        return self.status == StackInstanceStatusEnum.OUTDATED.value
+
+    def is_status_inoperable(self) -> bool:
+        """
+        """
+        return self.status == StackInstanceStatusEnum.INOPERABLE.value
+
     @property
-    def detailed_status(self) -> T.Optional[DetailedStackInstanceStatusEnum]:
-        return DetailedStackInstanceStatusEnum.get_by_name(
+    def detailed_status(self) -> T.Optional[StackInstanceDetailedStatusEnum]:
+        """
+        """
+        return StackInstanceDetailedStatusEnum.get_by_name(
             self.statck_instance_status.get("DetailedStatus")
         )
+
+    def is_detailed_status_pending(self) -> bool:
+        """
+        """
+        return self.detailed_status == StackInstanceDetailedStatusEnum.PENDING.value
+
+    def is_detailed_status_running(self) -> bool:
+        """
+        """
+        return self.detailed_status == StackInstanceDetailedStatusEnum.RUNNING.value
+
+    def is_detailed_status_succeeded(self) -> bool:
+        """
+        """
+        return self.detailed_status == StackInstanceDetailedStatusEnum.SUCCEEDED.value
+
+    def is_detailed_status_failed(self) -> bool:
+        """
+        """
+        return self.detailed_status == StackInstanceDetailedStatusEnum.FAILED.value
+
+    def is_detailed_status_cancelled(self) -> bool:
+        """
+        """
+        return self.detailed_status == StackInstanceDetailedStatusEnum.CANCELLED.value
+
+    def is_detailed_status_inoperable(self) -> bool:
+        """
+        """
+        return self.detailed_status == StackInstanceDetailedStatusEnum.INOPERABLE.value
