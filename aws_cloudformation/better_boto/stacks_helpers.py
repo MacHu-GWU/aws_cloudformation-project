@@ -19,8 +19,12 @@ from ..stack import (
     Stack,
     DriftStatusEnum,
     ChangeSetStatusEnum,
+    ChangeSetExecutionStatusEnum,
     ChangeSetTypeEnum,
+    ChangeSet,
 )
+
+from .taggings_helper import to_tag_dict
 
 # def resolve_template_in_kwargs(
 #     kwargs: dict,
@@ -110,6 +114,36 @@ def resolve_tags(
         kwargs["Tags"] = [dict(Key=key, Value=value) for key, value in tags.items()]
 
 
+def resolve_on_failure(
+    kwargs: dict,
+    on_failure_do_nothing: T.Optional[bool] = False,
+    on_failure_rollback: T.Optional[bool] = False,
+    on_failure_delete: T.Optional[bool] = False,
+):
+    if (
+        sum(
+            [
+                on_failure_do_nothing,
+                on_failure_rollback,
+                on_failure_delete,
+            ]
+        )
+        > 1
+    ):  # pragma: no cover
+        raise ValueError(
+            "You can only set one of "
+            "on_failure_do_nothing, on_failure_rollback, on_failure_delete to True!"
+        )
+    if on_failure_do_nothing:
+        kwargs["OnFailure"] = "DO_NOTHING"
+    elif on_failure_rollback:
+        kwargs["OnFailure"] = "ROLLBACK"
+    elif on_failure_delete:
+        kwargs["OnFailure"] = "DELETE"
+    else:  # pragma: no cover
+        raise NotImplementedError
+
+
 def resolve_create_update_stack_common_kwargs(
     kwargs: dict,
     parameters: T.List[Parameter] = None,
@@ -132,6 +166,30 @@ def resolve_create_update_stack_common_kwargs(
         kwargs,
         tags=tags,
     )
+
+
+def resolve_change_set_type(
+    kwargs: dict,
+    change_set_type_is_create: T.Optional[bool] = False,
+    change_set_type_is_update: T.Optional[bool] = False,
+    change_set_type_is_import: T.Optional[bool] = False,
+):
+    true_flag_count = sum([
+        change_set_type_is_create,
+        change_set_type_is_update,
+        change_set_type_is_import,
+    ])
+    if true_flag_count == 0: # pragma: no cover
+        return
+    elif true_flag_count == 1:
+        if change_set_type_is_create:
+            kwargs["ChangeSetType"] = ChangeSetTypeEnum.CREATE.value
+        elif change_set_type_is_update:
+            kwargs["ChangeSetType"] = ChangeSetTypeEnum.UPDATE.value
+        elif change_set_type_is_import:
+            kwargs["ChangeSetType"] = ChangeSetTypeEnum.IMPORT.value
+        else:  # pragma: no cover
+            raise NotImplementedError
 
 
 def parse_describe_stacks_response(data: dict) -> Stack:
@@ -178,4 +236,37 @@ def parse_describe_stacks_response(data: dict) -> Stack:
         drift_last_check_time=data.get("DriftInformation", dict()).get(
             "LastCheckTimestamp"
         ),
+    )
+
+
+def parse_describe_change_set_response(data: dict) -> ChangeSet:
+    """
+    Create a :class:`~aws_cottonformation.stack.ChangeSet` object from the
+    ``describe_change_set`` API response.
+    """
+    return ChangeSet(
+        change_set_id=data["ChangeSetId"],
+        change_set_name=data["ChangeSetName"],
+        stack_id=data["StackId"],
+        stack_name=data["StackName"],
+        description=data.get("Description"),
+        params={
+            dct["ParameterKey"]: Parameter(
+                key=dct["ParameterKey"],
+                value=dct["ParameterValue"],
+                use_previous_value=dct.get("UsePreviousValue"),
+                resolved_value=dct.get("ResolvedValue"),
+            )
+            for dct in data.get("Parameters", [])
+        },
+        creation_time=data.get("CreationTime"),
+        execution_status=ChangeSetExecutionStatusEnum.get_by_name(data.get("ExecutionStatus")),
+        status=ChangeSetStatusEnum.get_by_name(data.get("Status")),
+        status_reason=data.get("StatusReason"),
+        notification_arns=data.get("NotificationARNs"),
+        rollback_configuration=data.get("RollbackConfiguration"),
+        capabilities=data.get("Capabilities"),
+        tags=to_tag_dict(data.get("Tags", [])),
+        changes=data.get("Changes", []),
+        include_nested_stacks=data.get("IncludeNestedStacks"),
     )
