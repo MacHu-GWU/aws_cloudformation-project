@@ -21,7 +21,7 @@ class StackSetStatusEnum(str, enum.Enum):
     DELETED = "DELETED"
 
     @classmethod
-    def get_by_name(cls, name: T.Optional[str]) -> "StackSetStatusEnum":
+    def get_by_name(cls, name: T.Optional[str]) -> T.Optional["StackSetStatusEnum"]:
         return get_enum_by_name(cls, name)
 
 
@@ -30,7 +30,9 @@ class StackSetPermissionModelEnum(str, enum.Enum):
     SELF_MANAGED = "SELF_MANAGED"
 
     @classmethod
-    def get_by_name(cls, name: T.Optional[str]) -> "StackSetPermissionModelEnum":
+    def get_by_name(
+        cls, name: T.Optional[str]
+    ) -> T.Optional["StackSetPermissionModelEnum"]:
         return get_enum_by_name(cls, name)
 
 
@@ -39,7 +41,7 @@ class StackSetCallAsEnum(str, enum.Enum):
     DELEGATED_ADMIN = "DELEGATED_ADMIN"
 
     @classmethod
-    def get_by_name(cls, name: T.Optional[str]) -> "StackSetCallAsEnum":
+    def get_by_name(cls, name: T.Optional[str]) -> T.Optional["StackSetCallAsEnum"]:
         return get_enum_by_name(cls, name)
 
 
@@ -67,7 +69,9 @@ class StackInstanceStatusEnum(str, enum.Enum):
     INOPERABLE = "INOPERABLE"
 
     @classmethod
-    def get_by_name(cls, name: T.Optional[str]) -> "StackInstanceStatusEnum":
+    def get_by_name(
+        cls, name: T.Optional[str]
+    ) -> T.Optional["StackInstanceStatusEnum"]:
         return get_enum_by_name(cls, name)
 
 
@@ -80,7 +84,9 @@ class DetailedStackInstanceStatusEnum(str, enum.Enum):
     INOPERABLE = "INOPERABLE"
 
     @classmethod
-    def get_by_name(cls, name: T.Optional[str]) -> "DetailedStackInstanceStatusEnum":
+    def get_by_name(
+        cls, name: T.Optional[str]
+    ) -> T.Optional["DetailedStackInstanceStatusEnum"]:
         return get_enum_by_name(cls, name)
 
 
@@ -91,7 +97,9 @@ class StackInstanceDriftStatusEnum(str, enum.Enum):
     NOT_CHECKED = "NOT_CHECKED"
 
     @classmethod
-    def get_by_name(cls, name: T.Optional[str]) -> "StackInstanceDriftStatusEnum":
+    def get_by_name(
+        cls, name: T.Optional[str]
+    ) -> T.Optional["StackInstanceDriftStatusEnum"]:
         return get_enum_by_name(cls, name)
 
 
@@ -111,3 +119,9 @@ class StackInstance:
     )
     last_drift_check_timestamp: T.Optional[datetime] = dataclasses.field(default=None)
     last_operation_id: T.Optional[str] = dataclasses.field(default=None)
+
+    @property
+    def detailed_status(self) -> T.Optional[DetailedStackInstanceStatusEnum]:
+        return DetailedStackInstanceStatusEnum.get_by_name(
+            self.statck_instance_status.get("DetailedStatus")
+        )
