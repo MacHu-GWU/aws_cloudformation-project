@@ -6,6 +6,7 @@ without changing the behavior and avoid adding additional feature.
 """
 
 from .stacks import (
+    StackIterProxy,
     describe_stacks,
     describe_live_stack,
     DEFAULT_S3_PREFIX_FOR_TEMPLATE,
@@ -40,6 +41,7 @@ from .stacksets import (
     create_stack_instances,
     update_stack_instances,
     delete_stack_instances,
+    StackInstanceIterProxy,
     list_stack_instances,
 )
 
