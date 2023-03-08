@@ -10,7 +10,7 @@ from boto_session_manager import BotoSesManager
 from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
 
-from .stacks import (
+from ..stack import (
     Parameter,
 )
 from ..stack_set import (
@@ -60,8 +60,8 @@ def create_stack_set(
     template_body: T.Optional[str] = NOTHING,
     template_url: T.Optional[str] = NOTHING,
     stack_id: T.Optional[str] = NOTHING,
-    parameters: T.List[Parameter] = NOTHING,
-    tags: T.Dict[str, str] = NOTHING,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
@@ -121,8 +121,8 @@ def update_stack_set(
     template_body: T.Optional[str] = NOTHING,
     template_url: T.Optional[str] = NOTHING,
     use_previous_template: T.Optional[bool] = NOTHING,
-    parameters: T.List[Parameter] = NOTHING,
-    tags: T.Dict[str, str] = NOTHING,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
