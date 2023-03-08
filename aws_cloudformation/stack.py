@@ -9,10 +9,12 @@ import enum
 import dataclasses
 from datetime import datetime
 
+from .helper import get_enum_by_name
 
-class StackStatusEnum(enum.Enum):
-    """
-    """
+
+class StackStatusEnum(str, enum.Enum):
+    """ """
+
     CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
     CREATE_FAILED = "CREATE_FAILED"
     CREATE_COMPLETE = "CREATE_COMPLETE"
@@ -40,38 +42,32 @@ class StackStatusEnum(enum.Enum):
     IMPORT_ROLLBACK_COMPLETE = "IMPORT_ROLLBACK_COMPLETE"
 
     def is_success(self) -> bool:
-        """
-        """
+        """ """
         return self in _SUCCESS_STATUS
 
     def is_failed(self) -> bool:
-        """
-        """
+        """ """
         return self in _FAILED_STATUS
 
     def is_in_progress(self) -> bool:
-        """
-        """
+        """ """
         return self in _IN_PROGRESS_STATUS
 
     def is_complete(self) -> bool:
-        """
-        """
+        """ """
         return self in _COMPLETE_STATUS
 
     def is_stopped(self) -> bool:
-        """
-        """
+        """ """
         return self in _STOPPED_STATUS
 
     def is_live(self) -> bool:
-        """
-        """
+        """ """
         return not (self in _NOT_LIVE_STATUS)
 
     @classmethod
-    def get_by_name(cls, name: str) -> "StackStatusEnum":
-        return cls[name]
+    def get_by_name(cls, name: T.Optional[str]) -> T.Optional["StackStatusEnum"]:
+        return get_enum_by_name(cls, name)
 
 
 _SUCCESS_STATUS: T.Set[StackStatusEnum] = {
@@ -182,23 +178,23 @@ class Parameter:
         return dct
 
 
-class DriftStatusEnum(enum.Enum):
-    """
-    """
+class DriftStatusEnum(str, enum.Enum):
+    """ """
+
     DRIFTED = "DRIFTED"
     IN_SYNC = "IN_SYNC"
     UNKNOWN = "UNKNOWN"
     NOT_CHECKED = "NOT_CHECKED"
 
     @classmethod
-    def get_by_name(cls, name: str) -> "DriftStatusEnum":
-        return cls[name]
+    def get_by_name(cls, name: T.Optional[str]) -> T.Optional["DriftStatusEnum"]:
+        return get_enum_by_name(cls, name)
 
 
 @dataclasses.dataclass
 class Stack:
-    """
-    """
+    """ """
+
     id: str = dataclasses.field()
     name: str = dataclasses.field()
     change_set_id: T.Optional[str] = dataclasses.field(default=None)
@@ -219,9 +215,9 @@ class Stack:
     drift_last_check_time: T.Optional[datetime] = dataclasses.field(default=None)
 
 
-class ChangeSetStatusEnum(enum.Enum):
-    """
-    """
+class ChangeSetStatusEnum(str, enum.Enum):
+    """ """
+
     CREATE_PENDING = "CREATE_PENDING"
     CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
     CREATE_COMPLETE = "CREATE_COMPLETE"
@@ -231,10 +227,67 @@ class ChangeSetStatusEnum(enum.Enum):
     DELETE_FAILED = "DELETE_FAILED"
     FAILED = "FAILED"
 
+    @classmethod
+    def get_by_name(cls, name: T.Optional[str]) -> T.Optional["ChangeSetStatusEnum"]:
+        return get_enum_by_name(cls, name)
 
-class ChangeSetTypeEnum(enum.Enum):
-    """
-    """
+
+class ChangeSetTypeEnum(str, enum.Enum):
+    """ """
+
     CREATE = "CREATE"
     UPDATE = "UPDATE"
     IMPORT = "IMPORT"
+
+    @classmethod
+    def get_by_name(cls, name: T.Optional[str]) -> T.Optional["ChangeSetTypeEnum"]:
+        return get_enum_by_name(cls, name)
+
+
+class ChangeSetExecutionStatusEnum(str, enum.Enum):
+    """ """
+
+    UNAVAILABLE = "UNAVAILABLE"
+    AVAILABLE = "AVAILABLE"
+    EXECUTE_IN_PROGRESS = "EXECUTE_IN_PROGRESS"
+    EXECUTE_COMPLETE = "EXECUTE_COMPLETE"
+    EXECUTE_FAILED = "EXECUTE_FAILED"
+    OBSOLETE = "OBSOLETE"
+
+    @classmethod
+    def get_by_name(
+        cls, name: T.Optional[str]
+    ) -> T.Optional["ChangeSetExecutionStatusEnum"]:
+        return get_enum_by_name(cls, name)
+
+
+@dataclasses.dataclass
+class ChangeSet:
+    """
+    Ref:
+
+    - describe_change_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/describe_change_set.html
+    - list_change_sets: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/list_change_sets.html
+    """
+
+    change_set_id: str = dataclasses.field()
+    change_set_name: str = dataclasses.field()
+    stack_id: str = dataclasses.field()
+    stack_name: str = dataclasses.field()
+    description: T.Optional[str] = dataclasses.field(default=None)
+    params: T.Dict[str, Parameter] = dataclasses.field(default_factory=dict)
+    creation_time: T.Optional[datetime] = dataclasses.field(default=None)
+    execution_status: T.Optional[ChangeSetExecutionStatusEnum] = dataclasses.field(
+        default=None
+    )
+    status: T.Optional[ChangeSetStatusEnum] = dataclasses.field(default=None)
+    status_reason: T.Optional[str] = dataclasses.field(default=None)
+    notification_arns: T.Optional[T.List[str]] = dataclasses.field(default=None)
+    rollback_configuration: T.Optional[dict] = dataclasses.field(default=None)
+    capabilities: T.Optional[T.List[str]] = dataclasses.field(default=None)
+    tags: T.Optional[T.Dict[str, str]] = dataclasses.field(default_factory=dict)
+    changes: T.Optional[T.List[dict]] = dataclasses.field(default_factory=list)
+    include_nested_stacks: T.Optional[bool] = dataclasses.field(default=None)
+    next_token: T.Optional[str] = dataclasses.field(default=None)
+    parent_change_set_id: T.Optional[str] = dataclasses.field(default=None)
+    root_change_set_id: T.Optional[str] = dataclasses.field(default=None)
