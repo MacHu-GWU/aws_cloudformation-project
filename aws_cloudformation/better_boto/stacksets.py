@@ -6,26 +6,21 @@ AWS CloudFormation StackSet related operations.
 
 import typing as T
 
-from boto_session_manager import BotoSesManager, AwsServiceEnum
+from boto_session_manager import BotoSesManager
+from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
 
 from .stacks import (
-    _resolve_capabilities_kwargs,
     Parameter,
 )
 from ..stack_set import (
-    StackSetStatusEnum,
-    StackSetPermissionModelEnum,
-    StackSetCallAsEnum,
     StackSet,
-    StackInstanceStatusEnum,
-    StackInstanceDetailedStatusEnum,
-    StackInstanceDriftStatusEnum,
     StackInstance,
 )
 from .stacksets_helpers import (
     resolve_callas_kwargs,
     resolve_create_update_stack_set_common_kwargs,
+    resolve_create_update_stack_instances_common_kwargs,
     parse_describe_stack_set_response,
     parse_describe_stack_instance_response,
 )
@@ -232,7 +227,10 @@ def describe_stack_instance(
         res = bsm.cloudformation_client.describe_stack_instance(**kwargs)
         return parse_describe_stack_instance_response(res["StackInstance"])
     except Exception as e:
-        if "StackSetNotFoundException" in str(e):
+        if "StackInstanceNotFoundException" in str(e):  # pragma: no cover
+            return None
+        # moto3 version of not StackInstanceNotFoundException
+        elif "'NoneType' object has no attribute 'to_dict'" in str(e):
             return None
         else:  # pragma: no cover
             raise e
@@ -263,12 +261,12 @@ def create_stack_instances(
         Regions=regions,
         Accounts=accounts,
         DeploymentTargets=deployment_targets,
-        ParameterOverrides=param_overrides,
         OperationPreferences=operation_preference,
         OperationId=operation_id,
     )
-    resolve_callas_kwargs(
+    resolve_create_update_stack_instances_common_kwargs(
         kwargs,
+        parameter_overrides=param_overrides,
         call_as_self=call_as_self,
         call_as_delegated_admin=call_as_delegated_admin,
     )
@@ -299,12 +297,12 @@ def update_stack_instances(
         Regions=regions,
         Accounts=accounts,
         DeploymentTargets=deployment_targets,
-        ParameterOverrides=param_overrides,
         OperationPreferences=operation_preference,
         OperationId=operation_id,
     )
-    resolve_callas_kwargs(
+    resolve_create_update_stack_instances_common_kwargs(
         kwargs,
+        parameter_overrides=param_overrides,
         call_as_self=call_as_self,
         call_as_delegated_admin=call_as_delegated_admin,
     )
@@ -348,3 +346,73 @@ def delete_stack_instances(
     )
     res = bsm.cloudformation_client.delete_stack_instances(**resolve_kwargs(**kwargs))
     return res["OperationId"]
+
+
+def _list_stack_instances(
+    bsm: BotoSesManager,
+    stack_set_name: str,
+    filters: T.Optional[T.List[dict]] = NOTHING,
+    stack_instance_account: T.Optional[str] = NOTHING,
+    stack_instance_region: T.Optional[str] = NOTHING,
+    call_as_self: bool = False,
+    call_as_delegated_admin: bool = False,
+    page_size: int = 20,
+    max_results: int = 1000,
+    verbose: bool = True,
+) -> T.Iterable[StackInstance]:
+    paginator = bsm.cloudformation_client.get_paginator("list_stack_instances")
+    kwargs = dict(
+        StackSetName=stack_set_name,
+        Filters=filters,
+        StackInstanceAccount=stack_instance_account,
+        StackInstanceRegion=stack_instance_region,
+        PaginationConfig=dict(
+            PageSize=page_size,
+            MaxItems=max_results,
+        ),
+    )
+    resolve_callas_kwargs(
+        kwargs,
+        call_as_self=call_as_self,
+        call_as_delegated_admin=call_as_delegated_admin,
+    )
+    for response in paginator.paginate(**resolve_kwargs(**kwargs)):
+        for data in response.get("Summaries", []):
+            yield parse_describe_stack_instance_response(data)
+
+
+class StackInstanceIterProxy(IterProxy[StackInstance]):
+    """ """
+
+
+def list_stack_instances(
+    bsm: BotoSesManager,
+    stack_set_name: str,
+    filters: T.Optional[T.List[dict]] = NOTHING,
+    stack_instance_account: T.Optional[str] = NOTHING,
+    stack_instance_region: T.Optional[str] = NOTHING,
+    call_as_self: bool = False,
+    call_as_delegated_admin: bool = False,
+    page_size: int = 20,
+    max_results: int = 1000,
+    verbose: bool = True,
+) -> StackInstanceIterProxy:
+    """
+    Ref:
+
+    - list_stack_instances: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/list_stack_instances.html
+    """
+    return StackInstanceIterProxy(
+        _list_stack_instances(
+            bsm=bsm,
+            stack_set_name=stack_set_name,
+            filters=filters,
+            stack_instance_account=stack_instance_account,
+            stack_instance_region=stack_instance_region,
+            call_as_self=call_as_self,
+            call_as_delegated_admin=call_as_delegated_admin,
+            page_size=page_size,
+            max_results=max_results,
+            verbose=verbose,
+        )
+    )

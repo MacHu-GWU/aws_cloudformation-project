@@ -40,6 +40,16 @@ def resolve_parameters(
         kwargs["Parameters"] = [param.to_kwargs() for param in parameters]
 
 
+def resolve_parameters_overrides(
+    kwargs: dict,
+    parameter_overrides: T.Optional[T.List[Parameter]] = NOTHING,
+):
+    if parameter_overrides is not NOTHING:
+        kwargs["ParameterOverrides"] = [
+            param.to_kwargs() for param in parameter_overrides
+        ]
+
+
 def resolve_tags(
     kwargs: dict,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
@@ -132,6 +142,23 @@ def resolve_create_update_stack_set_common_kwargs(
     resolve_managed_execution(
         kwargs,
         managed_execution_active=managed_execution_active,
+    )
+
+
+def resolve_create_update_stack_instances_common_kwargs(
+    kwargs: dict,
+    parameter_overrides: T.Optional[T.List[Parameter]] = NOTHING,
+    call_as_self: bool = False,
+    call_as_delegated_admin: bool = False,
+):
+    resolve_parameters_overrides(
+        kwargs,
+        parameter_overrides=parameter_overrides,
+    )
+    resolve_callas_kwargs(
+        kwargs,
+        call_as_self=call_as_self,
+        call_as_delegated_admin=call_as_delegated_admin,
     )
 
 

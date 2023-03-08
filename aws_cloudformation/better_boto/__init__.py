@@ -33,8 +33,18 @@ from .stacks import (
 )
 
 from .stacksets import (
-    from_describe_stack_set,
     describe_stack_set,
     create_stack_set,
     update_stack_set,
+    delete_stack_set,
+    describe_stack_instance,
+    create_stack_instances,
+    update_stack_instances,
+    delete_stack_instances,
+    list_stack_instances,
+)
+
+from .taggings_helper import (
+    to_tag_list,
+    to_tag_dict,
 )

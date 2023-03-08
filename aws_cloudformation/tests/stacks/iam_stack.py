@@ -15,9 +15,12 @@ def make_tpl_1() -> cf.Template:
 
     policy1 = iam.ManagedPolicy(
         "Policy1",
-        p_ManagedPolicyName=cf.Sub.from_params(
-            "{}-policy-1",
-            param_project_name,
+        p_ManagedPolicyName=cf.Sub(
+            "${project_name}-${aws_region}-policy-1",
+            dict(
+                project_name=param_project_name.ref(),
+                aws_region=cf.AWS_REGION,
+            )
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -50,9 +53,12 @@ def make_tpl_2() -> cf.Template:
 
     policy2 = iam.ManagedPolicy(
         "Policy222",
-        p_ManagedPolicyName=cf.Sub.from_params(
-            "{}-policy-2",
-            tpl.Parameters["ProjectName"],
+        p_ManagedPolicyName=cf.Sub(
+            "${project_name}-${aws_region}-policy-2",
+            dict(
+                project_name=tpl.Parameters["ProjectName"].ref(),
+                aws_region=cf.AWS_REGION,
+            )
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -99,9 +105,12 @@ def make_tpl_3() -> cf.Template:
 
     policy3 = iam.ManagedPolicy(
         "Policy33333",
-        p_ManagedPolicyName=cf.Sub.from_params(
-            "{}-policy-3",
-            tpl.Parameters["ProjectName"],
+        p_ManagedPolicyName=cf.Sub(
+            "${project_name}-${aws_region}-policy-3",
+            dict(
+                project_name=tpl.Parameters["ProjectName"].ref(),
+                aws_region=cf.AWS_REGION,
+            )
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -125,9 +134,12 @@ def make_tpl_4() -> cf.Template:
 
     policy4 = iam.ManagedPolicy(
         "Policy4",
-        p_ManagedPolicyName=cf.Sub.from_params(
-            "{}-policy-4",
-            tpl.Parameters["ProjectName"],
+        p_ManagedPolicyName=cf.Sub(
+            "${project_name}-${aws_region}-policy-4",
+            dict(
+                project_name=tpl.Parameters["ProjectName"].ref(),
+                aws_region=cf.AWS_REGION,
+            )
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -166,7 +178,13 @@ def make_tpl_4() -> cf.Template:
 
     policy11 = iam.ManagedPolicy(
         "Policy11",
-        p_ManagedPolicyName=cf.Sub.from_params("{}-policy-1-1", param_project_name),
+        p_ManagedPolicyName=cf.Sub(
+            "${project_name}-${aws_region}-policy-1-1",
+            dict(
+                project_name=param_project_name.ref(),
+                aws_region=cf.AWS_REGION,
+            )
+        ),
         rp_PolicyDocument=policy_document,
     )
     tpl1.add(policy11)
@@ -193,7 +211,13 @@ def make_tpl_4() -> cf.Template:
 
     policy111 = iam.ManagedPolicy(
         "Policy111",
-        p_ManagedPolicyName=cf.Sub.from_params("{}-policy-1-1-1", param_project_name),
+        p_ManagedPolicyName=cf.Sub(
+            "${project_name}-${aws_region}-policy-1-1-1",
+            dict(
+                project_name=tpl.Parameters["ProjectName"].ref(),
+                aws_region=cf.AWS_REGION,
+            )
+        ),
         rp_PolicyDocument=policy_document,
     )
     tpl11.add(policy111)
