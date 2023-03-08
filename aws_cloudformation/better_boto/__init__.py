@@ -6,7 +6,6 @@ without changing the behavior and avoid adding additional feature.
 """
 
 from .stacks import (
-    from_describe_stacks,
     describe_stacks,
     describe_live_stack,
     DEFAULT_S3_PREFIX_FOR_TEMPLATE,
