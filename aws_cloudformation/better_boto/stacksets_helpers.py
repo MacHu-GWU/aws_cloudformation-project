@@ -4,10 +4,7 @@ import typing as T
 
 from func_args import NOTHING
 
-from .stacks import (
-    _resolve_capabilities_kwargs,
-    Parameter,
-)
+from ..stack import Parameter
 from ..stack_set import (
     StackSetStatusEnum,
     StackSetPermissionModelEnum,
@@ -16,6 +13,12 @@ from ..stack_set import (
     StackInstanceStatusEnum,
     StackInstanceDriftStatusEnum,
     StackInstance,
+)
+
+from .stacks_helpers import (
+    resolve_capabilities_kwargs,
+    resolve_parameters,
+    resolve_tags,
 )
 
 
@@ -32,14 +35,6 @@ def resolve_callas_kwargs(
         kwargs["CallAs"] = StackSetCallAsEnum.SELF.value
 
 
-def resolve_parameters(
-    kwargs: dict,
-    parameters: T.Optional[T.List[Parameter]] = NOTHING,
-):
-    if parameters is not NOTHING:
-        kwargs["Parameters"] = [param.to_kwargs() for param in parameters]
-
-
 def resolve_parameters_overrides(
     kwargs: dict,
     parameter_overrides: T.Optional[T.List[Parameter]] = NOTHING,
@@ -48,14 +43,6 @@ def resolve_parameters_overrides(
         kwargs["ParameterOverrides"] = [
             param.to_kwargs() for param in parameter_overrides
         ]
-
-
-def resolve_tags(
-    kwargs: dict,
-    tags: T.Optional[T.Dict[str, str]] = NOTHING,
-):
-    if tags is not NOTHING:
-        kwargs["Tags"] = [dict(Key=key, Value=value) for key, value in tags.items()]
 
 
 def resolve_permission_model(
@@ -118,7 +105,7 @@ def resolve_create_update_stack_set_common_kwargs(
         kwargs,
         tags=tags,
     )
-    _resolve_capabilities_kwargs(
+    resolve_capabilities_kwargs(
         kwargs,
         include_iam=include_iam,
         include_named_iam=include_named_iam,

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import time
 
 import pytest
 from rich import print as rprint
@@ -118,7 +119,9 @@ class Test(BaseTest):
             stack_instance_region=regions[0],
             call_as_self=True,
         )
-        assert stack_instance.param_overrides["ProjectName"].value == f"{project_name}-v1"
+        assert (
+            stack_instance.param_overrides["ProjectName"].value == f"{project_name}-v1"
+        )
 
         # ----------------------------------------------------------------------
         # Add more stack instances
@@ -168,23 +171,27 @@ class Test(BaseTest):
         # ----------------------------------------------------------------------
         # Delete stack instances
         # ----------------------------------------------------------------------
-        aws_cf.better_boto.delete_stack_instances(
+        # note: the moto implementation is wrong, so we have to call it multiple times
+        # I submit an issue: https://github.com/getmoto/moto/issues/6039
+        for _ in range(4):
+            aws_cf.better_boto.delete_stack_instances(
+                bsm=self.bsm,
+                stack_set_name=stack_set_name,
+                regions=regions,
+                accounts=accounts,
+                retain_stacks=False,
+                call_as_self=True,
+            )
+
+        stack_instances = aws_cf.better_boto.list_stack_instances(
             bsm=self.bsm,
             stack_set_name=stack_set_name,
-            regions=regions,
-            accounts=accounts,
-            retain_stacks=False,
             call_as_self=True,
-        )
-        stack_instance_iterproxy = aws_cf.better_boto.list_stack_instances(
-            bsm=self.bsm,
-            stack_set_name=stack_set_name,
-            call_as_self=True,
-        )
-        assert len(stack_instance_iterproxy.all()) == 0
+        ).all()
+        assert len(stack_instances) == 0
 
         # ----------------------------------------------------------------------
-        # Delete stack set, not gonna work
+        # Delete stack set
         # ----------------------------------------------------------------------
         aws_cf.better_boto.delete_stack_set(
             bsm=self.bsm,
