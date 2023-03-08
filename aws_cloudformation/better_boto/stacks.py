@@ -9,6 +9,8 @@ import sys
 from datetime import datetime
 
 from boto_session_manager import BotoSesManager, AwsServiceEnum
+from iterproxy import IterProxy
+from func_args import NOTHING, resolve_kwargs
 from colorama import Fore, Style
 
 from .. import exc
@@ -16,95 +18,60 @@ from .. import helper
 from ..console import get_s3_console_url
 from ..waiter import Waiter
 from ..stack import (
-    StackStatusEnum,
     Parameter,
-    Output,
     Stack,
-    DriftStatusEnum,
     ChangeSetStatusEnum,
     ChangeSetTypeEnum,
+    ChangeSet,
+)
+
+from .stacks_helpers import (
+    resolve_parameters,
+    resolve_tags,
+    resolve_on_failure,
+    resolve_create_update_stack_common_kwargs,
+    resolve_change_set_type,
+    parse_describe_stacks_response,
+    parse_describe_change_set_response,
 )
 
 
-def from_describe_stacks(data: dict) -> Stack:
-    """
-    Create a :class:`~aws_cottonformation.stack.Stack` object from the
-    ``describe_stacks`` API response.
-
-    :param data:
-    :return:
-    """
-    drift_status = data.get("DriftInformation", dict()).get("StackDriftStatus")
-    if drift_status is not None:
-        drift_status = DriftStatusEnum.get_by_name(drift_status)
-    return Stack(
-        id=data["StackId"],
-        name=data["StackName"],
-        change_set_id=data.get("ChangeSetId"),
-        status=StackStatusEnum.get_by_name(data["StackStatus"]),
-        description=data.get("Description"),
-        role_arn=data.get("RoleARN"),
-        creation_time=data.get("CreationTime"),
-        last_updated_time=data.get("LastUpdatedTime"),
-        deletion_time=data.get("DeletionTime"),
-        outputs={
-            dct["OutputKey"]: Output(
-                key=dct["OutputKey"],
-                value=dct["OutputValue"],
-                description=dct.get("Description"),
-                export_name=dct.get("ExportName"),
-            )
-            for dct in data.get("Outputs", [])
-        },
-        params={
-            dct["ParameterKey"]: Parameter(
-                key=dct["ParameterKey"],
-                value=dct["ParameterValue"],
-                use_previous_value=dct.get("UsePreviousValue"),
-                resolved_value=dct.get("ResolvedValue"),
-            )
-            for dct in data.get("Parameters", [])
-        },
-        tags={dct["Key"]: dct["Value"] for dct in data.get("Tags", [])},
-        enable_termination_protection=data.get("EnableTerminationProtection"),
-        parent_id=data.get("ParentId"),
-        root_id=data.get("RootId"),
-        drift_status=drift_status,
-        drift_last_check_time=data.get("DriftInformation", dict()).get(
-            "LastCheckTimestamp"
-        ),
-    )
-
-
-def describe_stacks(
+def _describe_stacks(
     bsm: BotoSesManager,
     name: str,
-) -> T.List[Stack]:
-    """
-
-
-    Ref:
-
-    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_stacks
-    """
+) -> T.Iterable[Stack]:
     cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
     paginator = cf_client.get_paginator("describe_stacks")
     response_iterator = paginator.paginate(
         StackName=name,
     )
     try:
-        stacks = list()
         for response in response_iterator:
             for data in response.get("Stacks", []):
-                stack = from_describe_stacks(data)
-                stacks.append(stack)
-        return stacks
-
+                yield parse_describe_stacks_response(data)
     except Exception as e:
         if "does not exist" in str(e):
             return []
         else:
             raise e
+
+
+class StackIterProxy(IterProxy[Stack]):
+    """ """
+
+
+def describe_stacks(
+    bsm: BotoSesManager,
+    name: str,
+) -> StackIterProxy:
+    """
+    Ref:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_stacks
+    """
+    return StackIterProxy(
+        _describe_stacks(bsm=bsm, name=name),
+    )
 
 
 def describe_live_stack(
@@ -115,7 +82,7 @@ def describe_live_stack(
     Get the detail of given stack (by name), if it not exists, or the existing
     one is a "DELETED" stack, returns None.
     """
-    stacks = describe_stacks(bsm, name)
+    stacks = describe_stacks(bsm, name).all()
     found = False
     live_stack = None
     for stack in stacks:
@@ -194,141 +161,29 @@ def upload_template_to_s3(
     return template_url
 
 
-def _resolve_template_in_kwargs(
-    kwargs: dict,
-    bsm: BotoSesManager,
-    template: T.Optional[str],
-    bucket: T.Optional[str] = None,
-    prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    verbose: bool = True,
-):
-    if template.startswith("s3://"):
-        kwargs["TemplateURL"] = template
-
-    if bucket is not None:
-        template_url = upload_template_to_s3(
-            bsm,
-            template,
-            bucket=bucket,
-            prefix=prefix,
-            verbose=verbose,
-        )
-        kwargs["TemplateURL"] = template_url
-    elif sys.getsizeof(template) > TEMPLATE_BODY_SIZE_LIMIT:
-        raise ValueError(
-            f"Template size is larger than {TEMPLATE_BODY_SIZE_LIMIT}B, "
-            "You have to upload to s3 bucket first!"
-        )
-    else:
-        kwargs["TemplateBody"] = template
-
-
-def _resolve_stack_policy(
-    kwargs: dict,
-    bsm: BotoSesManager,
-    stack_policy: str,
-    bucket: str,
-    prefix: T.Optional[str] = None,
-    verbose: bool = True,
-):
-    if bucket is not None:
-        policy_url = upload_template_to_s3(
-            bsm,
-            stack_policy,
-            bucket=bucket,
-            prefix=prefix,
-            verbose=verbose,
-        )
-        kwargs["StackPolicyURL"] = policy_url
-    elif sys.getsizeof(stack_policy) > STACK_POLICY_SIZE_LIMIT:
-        raise ValueError(
-            f"Stack policy size is larger than {STACK_POLICY_SIZE_LIMIT}B, "
-            "You have to upload to s3 bucket first!"
-        )
-    else:
-        kwargs["StackPolicyBody"] = stack_policy
-
-
-def _resolve_capabilities_kwargs(
-    kwargs: dict,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
-):
-    capabilities = list()
-    if include_iam:
-        capabilities.append("CAPABILITY_IAM")
-    if include_named_iam:
-        capabilities.append("CAPABILITY_NAMED_IAM")
-    if include_macro:
-        capabilities.append("CAPABILITY_AUTO_EXPAND")
-    if capabilities:
-        kwargs["Capabilities"] = capabilities
-
-
-def _resolve_create_update_common_kwargs(
-    kwargs: dict,
-    bsm: BotoSesManager,
-    execution_role_arn: T.Optional[str] = None,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    stack_policy: T.Optional[str] = None,
-    bucket: T.Optional[str] = None,
-    prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
-    resource_types: T.Optional[T.List[str]] = None,
-    client_request_token: T.Optional[str] = None,
-    verbose: bool = True,
-):
-    # RoleARN
-    if execution_role_arn:
-        kwargs["RoleARN"] = execution_role_arn
-
-    # Capabilities
-    _resolve_capabilities_kwargs(kwargs, include_iam, include_named_iam, include_macro)
-
-    # StackPolicy
-    if stack_policy:
-        _resolve_stack_policy(
-            kwargs, bsm, stack_policy, bucket, prefix_stack_policy, verbose
-        )
-
-    # Parameters
-    if parameters:
-        kwargs["Parameters"] = [param.to_kwargs() for param in parameters]
-
-    # Tags
-    if tags:
-        kwargs["Tags"] = [dict(Key=key, Value=value) for key, value in tags.items()]
-
-    # ResourceTypes
-    if resource_types:
-        kwargs["ResourceTypes"] = resource_types
-
-    # ClientRequestToken
-    if client_request_token:
-        kwargs["ClientRequestToken"] = client_request_token
-
-
 def create_stack(
     bsm: BotoSesManager,
     stack_name: str,
-    template: T.Optional[str],
-    bucket: T.Optional[str] = None,
-    prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    execution_role_arn: T.Optional[str] = None,
+    template_body: T.Optional[str] = NOTHING,
+    template_url: T.Optional[str] = NOTHING,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    disable_rollback: T.Optional[bool] = NOTHING,
+    rollback_configuration: T.Optional[dict] = NOTHING,
+    timeout_in_minutes: T.Optional[int] = NOTHING,
+    notification_arns: T.Optional[T.List[str]] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
-    stack_policy: T.Optional[str] = None,
-    prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    resource_types: T.Optional[T.List[str]] = None,
-    client_request_token: T.Optional[str] = None,
-    enable_termination_protection: T.Optional[bool] = None,
+    resource_types: T.Optional[T.List[str]] = NOTHING,
+    execution_role_arn: T.Optional[str] = NOTHING,
+    on_failure_do_nothing: T.Optional[bool] = False,
+    on_failure_rollback: T.Optional[bool] = False,
+    on_failure_delete: T.Optional[bool] = False,
+    stack_policy_body: T.Optional[str] = NOTHING,
+    stack_policy_url: T.Optional[str] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
+    enable_termination_protection: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ) -> str:
     """
@@ -337,56 +192,40 @@ def create_stack(
 
     Ref:
 
-    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack
-
-    :param bsm:
-    :param stack_name:
-    :param template:
-    :param bucket:
-    :param prefix:
-    :param parameters:
-    :param tags:
-    :param execution_role_arn:
-    :param include_iam:
-    :param include_named_iam:
-    :param include_macro:
-    :param stack_policy:
-    :param prefix_stack_policy:
-    :param resource_types:
-    :param client_request_token:
-    :param enable_termination_protection:
-    :param verbose:
+    - create_stack: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack
 
     :return: stack_id
     """
-    kwargs = dict(StackName=stack_name)
-
-    _resolve_create_update_common_kwargs(
+    kwargs = dict(
+        StackName=stack_name,
+        TemplateBody=template_body,
+        TemplateURL=template_url,
+        DisableRollback=disable_rollback,
+        RollbackConfiguration=rollback_configuration,
+        TimeoutInMinutes=timeout_in_minutes,
+        NotificationARNs=notification_arns,
+        ResourceTypes=resource_types,
+        RoleARN=execution_role_arn,
+        StackPolicyBody=stack_policy_body,
+        StackPolicyURL=stack_policy_url,
+        ClientRequestToken=client_request_token,
+        EnableTerminationProtection=enable_termination_protection,
+    )
+    resolve_on_failure(
+        kwargs,
+        on_failure_do_nothing=on_failure_do_nothing,
+        on_failure_rollback=on_failure_rollback,
+        on_failure_delete=on_failure_delete,
+    )
+    resolve_create_update_stack_common_kwargs(
         kwargs=kwargs,
-        bsm=bsm,
-        execution_role_arn=execution_role_arn,
         parameters=parameters,
         tags=tags,
-        stack_policy=stack_policy,
-        bucket=bucket,
-        prefix_stack_policy=prefix_stack_policy,
         include_iam=include_iam,
         include_named_iam=include_named_iam,
         include_macro=include_macro,
-        resource_types=resource_types,
-        client_request_token=client_request_token,
-        verbose=verbose,
     )
-
-    # Template
-    _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix, verbose)
-
-    # EnableTerminationProtection
-    if enable_termination_protection is not None:
-        kwargs["EnableTerminationProtection"] = enable_termination_protection
-
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    response = cf_client.create_stack(**kwargs)
+    response = bsm.cloudformation_client.create_stack(**kwargs)
     stack_id = response["StackId"]
     return stack_id
 
@@ -394,21 +233,24 @@ def create_stack(
 def update_stack(
     bsm: BotoSesManager,
     stack_name: str,
-    template: T.Optional[str] = None,
-    use_previous_template: T.Optional[bool] = None,
-    bucket: T.Optional[str] = None,
-    prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    execution_role_arn: T.Optional[str] = None,
+    template_body: T.Optional[str] = NOTHING,
+    template_url: T.Optional[str] = NOTHING,
+    use_previous_template: T.Optional[bool] = NOTHING,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    disable_rollback: T.Optional[bool] = NOTHING,
+    rollback_configuration: T.Optional[dict] = NOTHING,
+    notification_arns: T.Optional[T.List[str]] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
-    stack_policy: T.Optional[str] = None,
-    prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    resource_types: T.Optional[T.List[str]] = None,
+    resource_types: T.Optional[T.List[str]] = NOTHING,
+    execution_role_arn: T.Optional[str] = NOTHING,
+    stack_policy_body: T.Optional[str] = NOTHING,
+    stack_policy_url: T.Optional[str] = NOTHING,
+    stack_policy_during_update_body: T.Optional[str] = NOTHING,
+    stack_policy_during_update_url: T.Optional[str] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
     client_request_token: T.Optional[str] = None,
-    disable_rollback: T.Optional[bool] = None,
     verbose: bool = True,
 ) -> str:
     """
@@ -419,61 +261,33 @@ def update_stack(
 
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
 
-    :param bsm:
-    :param stack_name:
-    :param template:
-    :param use_previous_template:
-    :param bucket:
-    :param prefix:
-    :param parameters:
-    :param tags:
-    :param execution_role_arn:
-    :param include_iam:
-    :param include_named_iam:
-    :param include_macro:
-    :param stack_policy:
-    :param prefix_stack_policy:
-    :param resource_types:
-    :param client_request_token:
-    :param disable_roll_back:
-    :param verbose:
-
     :return: stack_id
     """
-    if (use_previous_template is True) and (template is not None):
-        raise ValueError
-
-    kwargs = dict(StackName=stack_name)
-
-    _resolve_create_update_common_kwargs(
+    kwargs = dict(
+        StackName=stack_name,
+        TemplateBody=template_body,
+        TemplateURL=template_url,
+        UsePreviousTemplate=use_previous_template,
+        DisableRollback=disable_rollback,
+        RollbackConfiguration=rollback_configuration,
+        NotificationARNs=notification_arns,
+        ResourceTypes=resource_types,
+        RoleARN=execution_role_arn,
+        StackPolicyBody=stack_policy_body,
+        StackPolicyURL=stack_policy_url,
+        StackPolicyDuringUpdateBody=stack_policy_during_update_body,
+        StackPolicyDuringUpdateURL=stack_policy_during_update_url,
+        ClientRequestToken=client_request_token,
+    )
+    resolve_create_update_stack_common_kwargs(
         kwargs=kwargs,
-        bsm=bsm,
-        execution_role_arn=execution_role_arn,
         parameters=parameters,
         tags=tags,
-        stack_policy=stack_policy,
-        bucket=bucket,
-        prefix_stack_policy=prefix_stack_policy,
         include_iam=include_iam,
         include_named_iam=include_named_iam,
         include_macro=include_macro,
-        resource_types=resource_types,
-        client_request_token=client_request_token,
-        verbose=verbose,
     )
-
-    # Template
-    if use_previous_template is True:
-        kwargs["UsePreviousTemplate"] = use_previous_template
-    else:
-        _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix, verbose)
-
-    # DisableRollback
-    if disable_rollback is not None:
-        kwargs["DisableRollback"] = disable_rollback
-
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    response = cf_client.update_stack(**kwargs)
+    response = bsm.cloudformation_client.update_stack(**kwargs)
     stack_id = response["StackId"]
     return stack_id
 
@@ -485,25 +299,28 @@ def change_set_name_suffix() -> str:
 def create_change_set(
     bsm: BotoSesManager,
     stack_name: str,
-    change_set_name: T.Optional[str] = None,
-    template: T.Optional[str] = None,
-    use_previous_template: T.Optional[bool] = None,
-    bucket: T.Optional[str] = None,
-    prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    execution_role_arn: T.Optional[str] = None,
+    change_set_name: str,
+    template_body: T.Optional[str] = NOTHING,
+    template_url: T.Optional[str] = NOTHING,
+    use_previous_template: T.Optional[bool] = NOTHING,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
-    stack_policy: T.Optional[str] = None,
-    prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    resource_types: T.Optional[T.List[str]] = None,
-    change_set_type: T.Optional[ChangeSetTypeEnum] = None,
-    include_nested_stack: T.Optional[bool] = None,
-    client_request_token: T.Optional[str] = None,
+    resource_types: T.Optional[T.List[str]] = NOTHING,
+    execution_role_arn: T.Optional[str] = NOTHING,
+    rollback_configuration: T.Optional[dict] = NOTHING,
+    notification_arns: T.Optional[T.List[str]] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
+    description: T.Optional[str] = NOTHING,
+    change_set_type_is_create: T.Optional[bool] = False,
+    change_set_type_is_update: T.Optional[bool] = False,
+    change_set_type_is_import: T.Optional[bool] = False,
+    resources_to_import: T.Optional[T.List[dict]] = NOTHING,
+    include_nested_stack: T.Optional[bool] = NOTHING,
     verbose: bool = True,
-) -> T.Tuple[str, str, str]:
+) -> T.Tuple[str, str]:
     """
     A wrapper provider more user-friendly API and type hint for
     cloudformation client ``create_change_set`` method.
@@ -512,127 +329,113 @@ def create_change_set(
 
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.create_change_set
 
-    TODO: add resources to import support; add nested stack support
-
-    :param bsm:
-    :param stack_name:
-    :param change_set_name:
-    :param template:
-    :param use_previous_template:
-    :param bucket:
-    :param prefix:
-    :param parameters:
-    :param tags:
-    :param execution_role_arn:
-    :param include_iam:
-    :param include_named_iam:
-    :param include_macro:
-    :param stack_policy:
-    :param prefix_stack_policy:
-    :param resource_types:
-    :param change_set_type:
-    :param include-Nested_stacks:
-    :param client_request_token:
-
     :return: stack_id and change_set_id
     """
-    if (use_previous_template is True) and (template is not None):
-        raise ValueError
-
     kwargs = dict(
         StackName=stack_name,
+        TemplateBody=template_body,
+        TemplateURL=template_url,
+        UsePreviousTemplate=use_previous_template,
+        ResourceTypes=resource_types,
+        RoleARN=execution_role_arn,
+        RollbackConfiguration=rollback_configuration,
+        NotificationARNs=notification_arns,
+        ChangeSetName=change_set_name,
+        ClientToken=client_request_token,
+        Description=description,
+        ResourcesToImport=resources_to_import,
+        IncludeNestedStacks=include_nested_stack,
     )
-    if change_set_name is None:
-        change_set_name = f"{stack_name}-{change_set_name_suffix()}"
-    kwargs["ChangeSetName"] = change_set_name
-
-    _resolve_create_update_common_kwargs(
+    resolve_change_set_type(
         kwargs=kwargs,
-        bsm=bsm,
-        execution_role_arn=execution_role_arn,
+        change_set_type_is_create=change_set_type_is_create,
+        change_set_type_is_update=change_set_type_is_update,
+        change_set_type_is_import=change_set_type_is_import,
+    )
+    resolve_create_update_stack_common_kwargs(
+        kwargs=kwargs,
         parameters=parameters,
         tags=tags,
-        stack_policy=stack_policy,
-        bucket=bucket,
-        prefix_stack_policy=prefix_stack_policy,
         include_iam=include_iam,
         include_named_iam=include_named_iam,
         include_macro=include_macro,
-        resource_types=resource_types,
-        client_request_token=client_request_token,
     )
-
-    # Template
-    if use_previous_template is True:
-        kwargs["UsePreviousTemplate"] = use_previous_template
-    else:
-        _resolve_template_in_kwargs(kwargs, bsm, template, bucket, prefix, verbose)
-
-    # ChangeSetType
-    if change_set_type is not None:
-        kwargs["ChangeSetType"] = change_set_type
-
-    # IncludeNestedStacks
-    if include_nested_stack is not None:
-        kwargs["IncludeNestedStacks"] = include_nested_stack
-
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    response = cf_client.create_change_set(**kwargs)
+    response = bsm.cloudformation_client.create_change_set(**kwargs)
     stack_id = response["StackId"]
     change_set_id = response["Id"]
-    return stack_id, change_set_id, change_set_name
+    return stack_id, change_set_id
 
 
 def describe_change_set(
     bsm: "BotoSesManager",
     change_set_name: str,
-    stack_name: T.Optional[str] = None,
-) -> dict:
+    stack_name: T.Optional[str] = NOTHING,
+    next_token: T.Optional[str] = NOTHING,
+) -> T.Optional[ChangeSet]:
     """
     A wrapper provider more user-friendly API and type hint for
     cloudformation client ``describe_change_set`` method.
 
     Ref:
 
-    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_change_set
-
-    :param bsm:
-    :param change_set_name:
-    :param stack_name:
-    :return:
+    - describe_change_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_change_set
     """
     kwargs = dict(
         ChangeSetName=change_set_name,
+        StackName=stack_name,
+        NextToken=next_token,
     )
-    if stack_name is not None:
-        kwargs["StackName"] = stack_name
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    return cf_client.describe_change_set(**kwargs)
+    response = bsm.cloudformation_client.describe_change_set(**resolve_kwargs(**kwargs))
+    change_set = parse_describe_change_set_response(response)
+    return change_set
 
 
 def describe_change_set_with_paginator(
     bsm: "BotoSesManager",
     change_set_name: str,
-    stack_name: T.Optional[str] = None,
-) -> T.Iterable[dict]:
+    stack_name: T.Optional[str] = NOTHING,
+    max_items: T.Optional[int] = 1000,
+    starting_token: T.Optional[str] = NOTHING,
+) -> T.Optional[ChangeSet]:
+    """
+    A wrapper provider more user-friendly API and type hint for
+    cloudformation client ``Paginator.DescribeChangeSet`` API.
+
+    Ref:
+
+    - DescribeChangeSet: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/paginator/DescribeChangeSet.html
+    """
+    paginator = bsm.cloudformation_client.get_paginator("describe_change_set")
+    pagination_config = dict()
+    if max_items is not NOTHING:
+        pagination_config["MaxItems"] = max_items
+    if starting_token is not NOTHING:
+        pagination_config["StartingToken"] = starting_token
     kwargs = dict(
         ChangeSetName=change_set_name,
+        StackName=stack_name,
+        PaginationConfig=pagination_config,
     )
-    if stack_name is not None:
-        kwargs["StackName"] = stack_name
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    paginator = cf_client.get_paginator("describe_change_set")
-    response_iterator = paginator.paginate(**kwargs)
+    response_iterator = paginator.paginate(**resolve_kwargs(**kwargs))
+    changes = list()
+    found_change_set = False
     for response in response_iterator:
-        yield response
+        change_set = parse_describe_change_set_response(response)
+        changes.extend(change_set.changes)
+        found_change_set = True
+    if found_change_set:
+        change_set.changes = changes
+        return change_set
+    else:
+        return None
 
 
 def execute_change_set(
     bsm: "BotoSesManager",
     change_set_name: str,
-    stack_name: T.Optional[str] = None,
-    client_request_token: T.Optional[str] = None,
-    disable_rollback: T.Optional[bool] = None,
+    stack_name: T.Optional[str] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
+    disable_rollback: T.Optional[bool] = NOTHING,
 ):
     """
     A wrapper provider more user-friendly API and type hint for
@@ -640,34 +443,23 @@ def execute_change_set(
 
     Ref:
 
-    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.execute_change_set
-
-    :param bsm:
-    :param change_set_name:
-    :param stack_name:
-    :param client_request_token:
-    :param disable_rollback:
-    :return:
+    - execute_change_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.execute_change_set
     """
-    kwargs = dict(ChangeSetName=change_set_name)
-
-    if stack_name is not None:
-        kwargs["StackName"] = stack_name
-    if client_request_token is not None:
-        kwargs["ClientRequestToken"] = client_request_token
-    if disable_rollback is not None:
-        kwargs["DisableRollback"] = disable_rollback
-
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    cf_client.execute_change_set(**kwargs)
+    kwargs = dict(
+        ChangeSetName=change_set_name,
+        StackName=stack_name,
+        ClientRequestToken=client_request_token,
+        DisableRollback=disable_rollback,
+    )
+    bsm.cloudformation_client.execute_change_set(**resolve_kwargs(**kwargs))
 
 
 def delete_stack(
     bsm: "BotoSesManager",
     stack_name: str,
-    retain_resources: T.Optional[T.List[str]] = None,
-    role_arn: T.Optional[bool] = None,
-    client_request_token: T.Optional[str] = None,
+    retain_resources: T.Optional[T.List[str]] = NOTHING,
+    role_arn: T.Optional[bool] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
 ):
     """
     A wrapper provider more user-friendly API and type hint for
@@ -675,24 +467,15 @@ def delete_stack(
 
     Ref:
 
-    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.delete_stack
-
-    :param bsm:
-    :param stack_name:
-    :param retain_resources:
-    :param role_arn:
-    :param client_request_token:
-    :return:
+    - delete_stack: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.delete_stack
     """
-    kwargs = dict(StackName=stack_name)
-    if retain_resources is not None:
-        kwargs["RetainResources"] = retain_resources
-    if role_arn is not None:
-        kwargs["RoleARN"] = role_arn
-    if client_request_token is not None:
-        kwargs["ClientRequestToken"] = client_request_token
-    cf_client = bsm.get_client(AwsServiceEnum.CloudFormation)
-    cf_client.delete_stack(**kwargs)
+    kwargs = dict(
+        StackName=stack_name,
+        RetainResources=retain_resources,
+        RoleARN=role_arn,
+        ClientRequestToken=client_request_token,
+    )
+    bsm.cloudformation_client.delete_stack(**resolve_kwargs(**kwargs))
 
 
 def wait_create_or_update_stack_to_finish(
@@ -785,7 +568,7 @@ def wait_create_change_set_to_finish(
     delays: T.Union[int, float],
     timeout: T.Union[int, float],
     verbose: bool,
-) -> dict:
+) -> T.Optional[ChangeSet]:
     """
     You can run this function after you run :func:`create_change_set`. It will
     wait until the change set creation success, fail, or timeout.
@@ -796,7 +579,8 @@ def wait_create_change_set_to_finish(
     :param delays:
     :param timeout:
     :param verbose:
-    :return:
+
+    :return: ``ChangeSet`` object
     """
     if verbose:
         print(
@@ -809,39 +593,46 @@ def wait_create_change_set_to_finish(
         indent=4,
         verbose=verbose,
     ):
-        response = describe_change_set(
+        change_set = describe_change_set(
             bsm=bsm,
             change_set_name=change_set_id,
             stack_name=stack_name,
         )
-        change_set_status = response["Status"]
-        if change_set_status in [
+        if change_set is None:
+            return None
+
+        if change_set.status in [
             ChangeSetStatusEnum.CREATE_COMPLETE.value,
             ChangeSetStatusEnum.FAILED.value,
         ]:
             if verbose:
                 print(
-                    f"\n    reached status {Fore.CYAN}{change_set_status}{Style.RESET_ALL}"
+                    f"\n    reached status {Fore.CYAN}{change_set.status}{Style.RESET_ALL}"
                 )
 
-            if change_set_status == ChangeSetStatusEnum.FAILED.value:
-                status_reason = response["StatusReason"]
-                if "The submitted information didn't contain changes." in status_reason:
-                    raise exc.CreateStackChangeSetButNotChangeError(status_reason)
+            if change_set.status == ChangeSetStatusEnum.FAILED.value:
+                if (
+                    "The submitted information didn't contain changes."
+                    in change_set.status_reason
+                ):
+                    raise exc.CreateStackChangeSetButNotChangeError(
+                        change_set.status_reason
+                    )
                 else:
-                    raise exc.CreateStackChangeSetFailedError(status_reason)
+                    raise exc.CreateStackChangeSetFailedError(change_set.status_reason)
 
-            if bool(response.get("NextToken")) and (
-                bool(len(response.get("Changes", [])))
-            ):
-                changes = list()
-                for res in describe_change_set_with_paginator(
+            if bool(change_set.next_token) and (bool(len(change_set.changes))):
+                describe_change_set_with_paginator(
                     bsm=bsm,
                     change_set_name=change_set_id,
                     stack_name=stack_name,
-                ):
-                    changes.extend(res.get("Changes", []))
-                res["Changes"] = changes
-                return res
-            else:
-                return response
+                    max_items=1000,
+                )
+                rest_of_change_set = describe_change_set_with_paginator(
+                    bsm=bsm,
+                    change_set_name=change_set_id,
+                    stack_name=stack_name,
+                )
+                change_set.changes.extend(rest_of_change_set.changes)
+
+            return change_set
