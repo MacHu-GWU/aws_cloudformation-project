@@ -10,6 +10,7 @@ import dataclasses
 from datetime import datetime
 
 from .helper import get_enum_by_name
+from .taggings import to_tag_dict
 
 
 class StackStatusEnum(str, enum.Enum):
@@ -214,6 +215,81 @@ class Stack:
     drift_status: T.Optional[DriftStatusEnum] = dataclasses.field(default=None)
     drift_last_check_time: T.Optional[datetime] = dataclasses.field(default=None)
 
+    def is_success(self) -> bool:
+        """ """
+        return self.status in _SUCCESS_STATUS
+
+    def is_failed(self) -> bool:
+        """ """
+        return self.status in _FAILED_STATUS
+
+    def is_in_progress(self) -> bool:
+        """ """
+        return self.status in _IN_PROGRESS_STATUS
+
+    def is_complete(self) -> bool:
+        """ """
+        return self.status in _COMPLETE_STATUS
+
+    def is_stopped(self) -> bool:
+        """ """
+        return self.status in _STOPPED_STATUS
+
+    def is_live(self) -> bool:
+        """ """
+        return not (self.status in _NOT_LIVE_STATUS)
+
+    @classmethod
+    def from_describe_stacks_response(cls, data: dict) -> "Stack":
+        """
+        Create a :class:`~aws_cottonformation.stack.Stack` object from the
+        ``describe_stacks`` API response.
+
+        Ref:
+
+        - describe_stacks: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/describe_stacks.html
+        """
+        drift_status = data.get("DriftInformation", dict()).get("StackDriftStatus")
+        if drift_status is not None:
+            drift_status = DriftStatusEnum.get_by_name(drift_status)
+        return cls(
+            id=data["StackId"],
+            name=data["StackName"],
+            change_set_id=data.get("ChangeSetId"),
+            status=StackStatusEnum.get_by_name(data["StackStatus"]),
+            description=data.get("Description"),
+            role_arn=data.get("RoleARN"),
+            creation_time=data.get("CreationTime"),
+            last_updated_time=data.get("LastUpdatedTime"),
+            deletion_time=data.get("DeletionTime"),
+            outputs={
+                dct["OutputKey"]: Output(
+                    key=dct["OutputKey"],
+                    value=dct["OutputValue"],
+                    description=dct.get("Description"),
+                    export_name=dct.get("ExportName"),
+                )
+                for dct in data.get("Outputs", [])
+            },
+            params={
+                dct["ParameterKey"]: Parameter(
+                    key=dct["ParameterKey"],
+                    value=dct["ParameterValue"],
+                    use_previous_value=dct.get("UsePreviousValue"),
+                    resolved_value=dct.get("ResolvedValue"),
+                )
+                for dct in data.get("Parameters", [])
+            },
+            tags={dct["Key"]: dct["Value"] for dct in data.get("Tags", [])},
+            enable_termination_protection=data.get("EnableTerminationProtection"),
+            parent_id=data.get("ParentId"),
+            root_id=data.get("RootId"),
+            drift_status=drift_status,
+            drift_last_check_time=data.get("DriftInformation", dict()).get(
+                "LastCheckTimestamp"
+            ),
+        )
+
 
 class ChangeSetStatusEnum(str, enum.Enum):
     """ """
@@ -293,50 +369,103 @@ class ChangeSet:
     root_change_set_id: T.Optional[str] = dataclasses.field(default=None)
 
     def is_status_create_pending(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.CREATE_PENDING.value
 
     def is_status_create_in_progress(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.CREATE_IN_PROGRESS.value
 
     def is_status_create_complete(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.CREATE_COMPLETE.value
 
     def is_status_delete_pending(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.DELETE_PENDING.value
 
     def is_status_delete_in_progress(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.DELETE_IN_PROGRESS.value
 
     def is_status_delete_complete(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.DELETE_COMPLETE.value
 
     def is_status_delete_failed(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.DELETE_FAILED.value
 
     def is_status_failed(self) -> bool:
+        """ """
         return self.status == ChangeSetStatusEnum.FAILED.value
 
     def is_exec_status_unavailable(self) -> bool:
+        """ """
         return self.execution_status == ChangeSetExecutionStatusEnum.UNAVAILABLE.value
 
     def is_exec_status_available(self) -> bool:
+        """ """
         return self.execution_status == ChangeSetExecutionStatusEnum.AVAILABLE.value
 
     def is_exec_status_execute_in_progress(self) -> bool:
+        """ """
         return (
             self.execution_status
             == ChangeSetExecutionStatusEnum.EXECUTE_IN_PROGRESS.value
         )
 
     def is_exec_status_execute_complete(self) -> bool:
+        """ """
         return (
             self.execution_status == ChangeSetExecutionStatusEnum.EXECUTE_COMPLETE.value
         )
 
     def is_exec_status_execute_failed(self) -> bool:
+        """ """
         return (
             self.execution_status == ChangeSetExecutionStatusEnum.EXECUTE_FAILED.value
         )
 
     def is_exec_status_obsolete(self) -> bool:
+        """ """
         return self.execution_status == ChangeSetExecutionStatusEnum.OBSOLETE.value
+
+    @classmethod
+    def from_describe_change_set_response(cls, data: dict) -> "ChangeSet":
+        """
+        Create a :class:`~aws_cottonformation.stack.ChangeSet` object from the
+        ``describe_change_set`` API response.
+
+        Ref:
+
+        - describe_change_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/describe_change_set.html
+        """
+        return cls(
+            change_set_id=data["ChangeSetId"],
+            change_set_name=data["ChangeSetName"],
+            stack_id=data["StackId"],
+            stack_name=data["StackName"],
+            description=data.get("Description"),
+            params={
+                dct["ParameterKey"]: Parameter(
+                    key=dct["ParameterKey"],
+                    value=dct["ParameterValue"],
+                    use_previous_value=dct.get("UsePreviousValue"),
+                    resolved_value=dct.get("ResolvedValue"),
+                )
+                for dct in data.get("Parameters", [])
+            },
+            creation_time=data.get("CreationTime"),
+            execution_status=ChangeSetExecutionStatusEnum.get_by_name(
+                data.get("ExecutionStatus")
+            ),
+            status=ChangeSetStatusEnum.get_by_name(data.get("Status")),
+            status_reason=data.get("StatusReason"),
+            notification_arns=data.get("NotificationARNs"),
+            rollback_configuration=data.get("RollbackConfiguration"),
+            capabilities=data.get("Capabilities"),
+            tags=to_tag_dict(data.get("Tags", [])),
+            changes=data.get("Changes", []),
+            include_nested_stacks=data.get("IncludeNestedStacks"),
+        )

@@ -34,8 +34,3 @@ from .stacksets import (
     StackInstanceIterProxy,
     list_stack_instances,
 )
-
-from .taggings_helper import (
-    to_tag_list,
-    to_tag_dict,
-)

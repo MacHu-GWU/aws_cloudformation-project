@@ -25,8 +25,6 @@ from .stacks_helpers import (
     resolve_on_failure,
     resolve_create_update_stack_common_kwargs,
     resolve_change_set_type,
-    parse_describe_stacks_response,
-    parse_describe_change_set_response,
 )
 
 
@@ -42,7 +40,7 @@ def _describe_stacks(
     try:
         for response in response_iterator:
             for data in response.get("Stacks", []):
-                yield parse_describe_stacks_response(data)
+                yield Stack.from_describe_stacks_response(data)
     except Exception as e:
         if "does not exist" in str(e):
             return []
@@ -219,9 +217,7 @@ def create_stack(
         include_named_iam=include_named_iam,
         include_macro=include_macro,
     )
-    response = bsm.cloudformation_client.create_stack(
-        **resolve_kwargs(**kwargs)
-    )
+    response = bsm.cloudformation_client.create_stack(**resolve_kwargs(**kwargs))
     stack_id = response["StackId"]
     return stack_id
 
@@ -283,9 +279,7 @@ def update_stack(
         include_named_iam=include_named_iam,
         include_macro=include_macro,
     )
-    response = bsm.cloudformation_client.update_stack(
-        **resolve_kwargs(**kwargs)
-    )
+    response = bsm.cloudformation_client.update_stack(**resolve_kwargs(**kwargs))
     stack_id = response["StackId"]
     return stack_id
 
@@ -358,9 +352,7 @@ def create_change_set(
         include_named_iam=include_named_iam,
         include_macro=include_macro,
     )
-    response = bsm.cloudformation_client.create_change_set(
-        **resolve_kwargs(**kwargs)
-    )
+    response = bsm.cloudformation_client.create_change_set(**resolve_kwargs(**kwargs))
     stack_id = response["StackId"]
     change_set_id = response["Id"]
     return stack_id, change_set_id
@@ -389,7 +381,7 @@ def describe_change_set(
         response = bsm.cloudformation_client.describe_change_set(
             **resolve_kwargs(**kwargs)
         )
-        change_set = parse_describe_change_set_response(response)
+        change_set = ChangeSet.from_describe_change_set_response(response)
         return change_set
     except Exception as e:
         if "does not exist" in str(e):
@@ -428,7 +420,7 @@ def describe_change_set_with_paginator(
     changes = list()
     found_change_set = False
     for response in response_iterator:
-        change_set = parse_describe_change_set_response(response)
+        change_set = ChangeSet.from_describe_change_set_response(response)
         changes.extend(change_set.changes)
         found_change_set = True
     if found_change_set:
@@ -506,7 +498,7 @@ def wait_create_or_update_stack_to_finish(
 
     :return: a :class:`~aws_cottonformation.stack.Stack` object.
     """
-    if verbose: # pragma: no cover # pragma: no cover
+    if verbose:  # pragma: no cover # pragma: no cover
         print(f" {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} ...")
     for _ in Waiter(
         delays=delays,
@@ -515,9 +507,9 @@ def wait_create_or_update_stack_to_finish(
         verbose=verbose,
     ):
         stack = describe_live_stack(bsm, stack_name)
-        if stack.status.is_stopped():
-            if verbose: # pragma: no cover
-                if stack.status.is_success():
+        if stack.is_stopped():
+            if verbose:  # pragma: no cover
+                if stack.is_success():
                     icon = "🟢"
                 else:
                     icon = "🔴"
@@ -547,7 +539,7 @@ def wait_delete_stack_to_finish(
 
     :return: Nothing
     """
-    if verbose: # pragma: no cover
+    if verbose:  # pragma: no cover
         print(f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} ...")
     for _ in Waiter(
         delays=delays,
@@ -557,12 +549,12 @@ def wait_delete_stack_to_finish(
     ):
         stack = describe_live_stack(bsm, stack_id)
         if stack is None:
-            if verbose: # pragma: no cover
+            if verbose:  # pragma: no cover
                 print(f"\n    already deleted.")
             return
         else:
-            if stack.status.is_stopped():
-                if verbose: # pragma: no cover
+            if stack.is_stopped():
+                if verbose:  # pragma: no cover
                     print(
                         f"\n    reached status {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
                     )
@@ -590,7 +582,7 @@ def wait_create_change_set_to_finish(
 
     :return: ``ChangeSet`` object
     """
-    if verbose: # pragma: no cover
+    if verbose:  # pragma: no cover
         print(
             f"  {Fore.CYAN}wait for change set creation to finish{Style.RESET_ALL} ..."
         )
@@ -613,12 +605,14 @@ def wait_create_change_set_to_finish(
             ChangeSetStatusEnum.CREATE_COMPLETE.value,
             ChangeSetStatusEnum.FAILED.value,
         ]:
-            if verbose: # pragma: no cover
+            if verbose:  # pragma: no cover
                 print(
                     f"\n    reached status {Fore.CYAN}{change_set.status}{Style.RESET_ALL}"
                 )
 
-            if change_set.status == ChangeSetStatusEnum.FAILED.value: # pragma: no cover
+            if (
+                change_set.status == ChangeSetStatusEnum.FAILED.value
+            ):  # pragma: no cover
                 if (
                     "The submitted information didn't contain changes."
                     in change_set.status_reason
@@ -629,7 +623,9 @@ def wait_create_change_set_to_finish(
                 else:
                     raise exc.CreateStackChangeSetFailedError(change_set.status_reason)
 
-            if bool(change_set.next_token) and (bool(len(change_set.changes))): # pragma: no cover
+            if bool(change_set.next_token) and (
+                bool(len(change_set.changes))
+            ):  # pragma: no cover
                 describe_change_set_with_paginator(
                     bsm=bsm,
                     change_set_name=change_set_id,

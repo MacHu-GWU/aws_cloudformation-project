@@ -24,8 +24,6 @@ from ..stack import (
     ChangeSet,
 )
 
-from .taggings_helper import to_tag_dict
-
 # def resolve_template_in_kwargs(
 #     kwargs: dict,
 #     bsm: BotoSesManager,
@@ -191,83 +189,3 @@ def resolve_change_set_type(
             kwargs["ChangeSetType"] = ChangeSetTypeEnum.IMPORT.value
         else:  # pragma: no cover
             raise NotImplementedError
-
-
-def parse_describe_stacks_response(data: dict) -> Stack:
-    """
-    Create a :class:`~aws_cottonformation.stack.Stack` object from the
-    ``describe_stacks`` API response.
-    """
-    drift_status = data.get("DriftInformation", dict()).get("StackDriftStatus")
-    if drift_status is not None:
-        drift_status = DriftStatusEnum.get_by_name(drift_status)
-    return Stack(
-        id=data["StackId"],
-        name=data["StackName"],
-        change_set_id=data.get("ChangeSetId"),
-        status=StackStatusEnum.get_by_name(data["StackStatus"]),
-        description=data.get("Description"),
-        role_arn=data.get("RoleARN"),
-        creation_time=data.get("CreationTime"),
-        last_updated_time=data.get("LastUpdatedTime"),
-        deletion_time=data.get("DeletionTime"),
-        outputs={
-            dct["OutputKey"]: Output(
-                key=dct["OutputKey"],
-                value=dct["OutputValue"],
-                description=dct.get("Description"),
-                export_name=dct.get("ExportName"),
-            )
-            for dct in data.get("Outputs", [])
-        },
-        params={
-            dct["ParameterKey"]: Parameter(
-                key=dct["ParameterKey"],
-                value=dct["ParameterValue"],
-                use_previous_value=dct.get("UsePreviousValue"),
-                resolved_value=dct.get("ResolvedValue"),
-            )
-            for dct in data.get("Parameters", [])
-        },
-        tags={dct["Key"]: dct["Value"] for dct in data.get("Tags", [])},
-        enable_termination_protection=data.get("EnableTerminationProtection"),
-        parent_id=data.get("ParentId"),
-        root_id=data.get("RootId"),
-        drift_status=drift_status,
-        drift_last_check_time=data.get("DriftInformation", dict()).get(
-            "LastCheckTimestamp"
-        ),
-    )
-
-
-def parse_describe_change_set_response(data: dict) -> ChangeSet:
-    """
-    Create a :class:`~aws_cottonformation.stack.ChangeSet` object from the
-    ``describe_change_set`` API response.
-    """
-    return ChangeSet(
-        change_set_id=data["ChangeSetId"],
-        change_set_name=data["ChangeSetName"],
-        stack_id=data["StackId"],
-        stack_name=data["StackName"],
-        description=data.get("Description"),
-        params={
-            dct["ParameterKey"]: Parameter(
-                key=dct["ParameterKey"],
-                value=dct["ParameterValue"],
-                use_previous_value=dct.get("UsePreviousValue"),
-                resolved_value=dct.get("ResolvedValue"),
-            )
-            for dct in data.get("Parameters", [])
-        },
-        creation_time=data.get("CreationTime"),
-        execution_status=ChangeSetExecutionStatusEnum.get_by_name(data.get("ExecutionStatus")),
-        status=ChangeSetStatusEnum.get_by_name(data.get("Status")),
-        status_reason=data.get("StatusReason"),
-        notification_arns=data.get("NotificationARNs"),
-        rollback_configuration=data.get("RollbackConfiguration"),
-        capabilities=data.get("Capabilities"),
-        tags=to_tag_dict(data.get("Tags", [])),
-        changes=data.get("Changes", []),
-        include_nested_stacks=data.get("IncludeNestedStacks"),
-    )

@@ -21,8 +21,6 @@ from .stacksets_helpers import (
     resolve_callas_kwargs,
     resolve_create_update_stack_set_common_kwargs,
     resolve_create_update_stack_instances_common_kwargs,
-    parse_describe_stack_set_response,
-    parse_describe_stack_instance_response,
 )
 
 
@@ -45,7 +43,7 @@ def describe_stack_set(
     )
     try:
         res = bsm.cloudformation_client.describe_stack_set(**kwargs)
-        return parse_describe_stack_set_response(res["StackSet"])
+        return StackSet.from_describe_stack_set_response(res["StackSet"])
     except Exception as e:
         if "StackSetNotFoundException" in str(e):
             return None
@@ -225,7 +223,7 @@ def describe_stack_instance(
     )
     try:
         res = bsm.cloudformation_client.describe_stack_instance(**kwargs)
-        return parse_describe_stack_instance_response(res["StackInstance"])
+        return StackInstance.from_describe_stack_instance_response(res["StackInstance"])
     except Exception as e:
         if "StackInstanceNotFoundException" in str(e):  # pragma: no cover
             return None
@@ -378,7 +376,7 @@ def _list_stack_instances(
     )
     for response in paginator.paginate(**resolve_kwargs(**kwargs)):
         for data in response.get("Summaries", []):
-            yield parse_describe_stack_instance_response(data)
+            yield StackInstance.from_describe_stack_instance_response(data)
 
 
 class StackInstanceIterProxy(IterProxy[StackInstance]):
