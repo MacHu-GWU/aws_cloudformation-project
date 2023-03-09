@@ -77,7 +77,7 @@ def describe_live_stack(
     found = False
     live_stack = None
     for stack in stacks:
-        if stack.status.is_live():
+        if stack.is_live():
             found = True
             live_stack = stack
             break
@@ -430,13 +430,20 @@ def wait_create_or_update_stack_to_finish(
     """
     if verbose:  # pragma: no cover # pragma: no cover
         print(f" {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} ...")
+
+    is_arn = stack_name.startswith("arn:")
+
     for _ in Waiter(
         delays=delays,
         timeout=timeout,
         indent=4,
         verbose=verbose,
     ):
-        stack = describe_live_stack(bsm, stack_name)
+        if is_arn:
+            stacks = describe_stacks(bsm, stack_name).all()
+            stack = stacks[0]
+        else:
+            stack = describe_live_stack(bsm, stack_name)
         if stack.is_stopped():
             if verbose:  # pragma: no cover
                 if stack.is_success():

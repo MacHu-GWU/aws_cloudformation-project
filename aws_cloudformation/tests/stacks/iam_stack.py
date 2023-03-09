@@ -20,7 +20,7 @@ def make_tpl_1() -> cf.Template:
             dict(
                 project_name=param_project_name.ref(),
                 aws_region=cf.AWS_REGION,
-            )
+            ),
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -29,9 +29,9 @@ def make_tpl_1() -> cf.Template:
                     "Sid": "VisualEditor0",
                     "Effect": "Allow",
                     "Action": "s3:GetObject",
-                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt"
+                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt",
                 }
-            ]
+            ],
         },
     )
     tpl.add(policy1)
@@ -58,7 +58,7 @@ def make_tpl_2() -> cf.Template:
             dict(
                 project_name=tpl.Parameters["ProjectName"].ref(),
                 aws_region=cf.AWS_REGION,
-            )
+            ),
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -67,9 +67,9 @@ def make_tpl_2() -> cf.Template:
                     "Sid": "VisualEditor0",
                     "Effect": "Allow",
                     "Action": "s3:GetObject",
-                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt"
+                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt",
                 }
-            ]
+            ],
         },
     )
     tpl.add(policy2)
@@ -82,7 +82,7 @@ def make_tpl_2() -> cf.Template:
                 "{}-policy-2-arn",
                 tpl.Parameters["ProjectName"],
             )
-        )
+        ),
     )
     tpl.add(output_policy2_arn)
 
@@ -110,7 +110,7 @@ def make_tpl_3() -> cf.Template:
             dict(
                 project_name=tpl.Parameters["ProjectName"].ref(),
                 aws_region=cf.AWS_REGION,
-            )
+            ),
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -119,9 +119,9 @@ def make_tpl_3() -> cf.Template:
                     "Sid": "VisualEditor0",
                     "Effect": "Allow",
                     "Action": "s3:GetObject",
-                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt"
+                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt",
                 }
-            ]
+            ],
         },
     )
     tpl.add(policy3)
@@ -142,7 +142,7 @@ def make_tpl_4() -> cf.Template:
             dict(
                 project_name=tpl.Parameters["ProjectName"].ref(),
                 aws_region=cf.AWS_REGION,
-            )
+            ),
         ),
         rp_PolicyDocument={
             "Version": "2012-10-17",
@@ -151,9 +151,9 @@ def make_tpl_4() -> cf.Template:
                     "Sid": "VisualEditor0",
                     "Effect": "Allow",
                     "Action": "s3:GetObject",
-                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt"
+                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt",
                 }
-            ]
+            ],
         },
     )
     tpl.add(policy4)
@@ -166,9 +166,9 @@ def make_tpl_4() -> cf.Template:
                 "Sid": "VisualEditor0",
                 "Effect": "Allow",
                 "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt"
+                "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt",
             }
-        ]
+        ],
     }
 
     tpl1 = cf.Template()
@@ -186,7 +186,7 @@ def make_tpl_4() -> cf.Template:
             dict(
                 project_name=param_project_name.ref(),
                 aws_region=cf.AWS_REGION,
-            )
+            ),
         ),
         rp_PolicyDocument=policy_document,
     )
@@ -196,9 +196,7 @@ def make_tpl_4() -> cf.Template:
     stack1 = cloudformation.Stack(
         "SubStack1",
         rp_TemplateURL="",
-        p_Parameters={
-            "ProjectName": tpl.Parameters["ProjectName"].ref()
-        },
+        p_Parameters={"ProjectName": tpl.Parameters["ProjectName"].ref()},
     )
     tpl.add(stack1)
     tpl.add_nested_stack(stack1, tpl1)
@@ -219,7 +217,7 @@ def make_tpl_4() -> cf.Template:
             dict(
                 project_name=tpl.Parameters["ProjectName"].ref(),
                 aws_region=cf.AWS_REGION,
-            )
+            ),
         ),
         rp_PolicyDocument=policy_document,
     )
@@ -229,11 +227,37 @@ def make_tpl_4() -> cf.Template:
     stack11 = cloudformation.Stack(
         "SubStack11",
         rp_TemplateURL="",
-        p_Parameters={
-            "ProjectName": tpl1.Parameters["ProjectName"].ref()
-        },
+        p_Parameters={"ProjectName": tpl1.Parameters["ProjectName"].ref()},
     )
     tpl1.add(stack11)
     tpl1.add_nested_stack(stack11, tpl11)
+
+    return tpl
+
+
+def make_tpl_0_malformed() -> cf.Template:
+    tpl = cf.Template()
+
+    policy1 = iam.ManagedPolicy(
+        "Policy1",
+        p_ManagedPolicyName=cf.Sub(
+            "${aws_region}-policy-1-%^&*",
+            dict(
+                aws_region=cf.AWS_REGION,
+            ),
+        ),
+        rp_PolicyDocument={
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "VisualEditor0",
+                    "Effect": "Allow",
+                    "Action": "s3:GetObject",
+                    "Resource": "arn:aws:s3:::this-bucket-not-exists/this-file-not-exists.txt",
+                }
+            ],
+        },
+    )
+    tpl.add(policy1)
 
     return tpl
