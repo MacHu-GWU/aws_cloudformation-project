@@ -10,6 +10,7 @@ from boto_session_manager import BotoSesManager, AwsServiceEnum
 from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
 from colorama import Fore, Style
+from aws_console_url import AWSConsole
 
 from .. import exc
 from ..waiter import Waiter
@@ -411,17 +412,29 @@ def delete_stack(
 def wait_create_or_update_stack_to_finish(
     bsm: "BotoSesManager",
     stack_name: str,
+    wait_until_stopped: bool,
     delays: T.Union[int, float],
     timeout: T.Union[int, float],
     verbose: bool,
 ) -> Stack:
     """
-    You can run this function after you run :func:`create_stack` or
-    :func:`update_stack`. It will wait until the stack change success, fail,
-    or timeout.
+    You can run this function after you run :func:`create_stack`,
+    :func:`update_stack`, or :func:`execute_change_set`. It will wait until
+    the stack status reach success, fail or timeout.
+
+    When the stack status reach failed, it will raise
+    :class:`~aws_cloudformation.exc.DeployStackFailedError` immediately.
+    Note that the stack will take some time to reach stopped status after it failed,
+    you may not to run another deploy immediately.
 
     :param bsm: ``boto_session_manager.BotoSesManager`` object
     :param stack_name: the stack name or unique stack id
+    :param wait_until_stopped: if False, it will raise an
+        :class:`~aws_cloudformation.exc.DeployStackFailedError` exception immediately
+        when there is an error and the stack starting to roll back. Note that
+        the stack will take some time to reach stopped status after it failed,
+        you may not to run another deploy immediately. if True, it will raise
+        the exception after the stack reaching ``stopped`` status.
     :param delays: how long it waits (in seconds) between two "get status" api call
     :param timeout: how long it will raise timeout error
     :param verbose: whether you want to log information to console
@@ -433,6 +446,9 @@ def wait_create_or_update_stack_to_finish(
 
     is_arn = stack_name.startswith("arn:")
 
+    failed_log_printed = False
+    has_error: bool = False
+    error: T.Optional[Exception] = None
     for _ in Waiter(
         delays=delays,
         timeout=timeout,
@@ -444,6 +460,23 @@ def wait_create_or_update_stack_to_finish(
             stack = stacks[0]
         else:
             stack = describe_live_stack(bsm, stack_name)
+
+        if stack.is_failed():
+            if failed_log_printed is False:
+                print(
+                    f"\n    reached status 🔴 {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}"
+                )
+                failed_log_printed = True
+            aws_console = AWSConsole(
+                aws_region=bsm.aws_region,
+                bsm=bsm,
+            )
+            console_url = aws_console.cloudformation.get_stack_events(stack_name)
+            has_error = True
+            error = exc.DeployStackFailedError(f"preview failed events: {console_url}")
+            if wait_until_stopped is False:
+                raise error
+
         if stack.is_stopped():
             if verbose:  # pragma: no cover
                 if stack.is_success():
@@ -453,6 +486,8 @@ def wait_create_or_update_stack_to_finish(
                 print(
                     f"\n    reached status {icon} {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}"
                 )
+            if has_error:
+                raise error
             return stack
 
 
