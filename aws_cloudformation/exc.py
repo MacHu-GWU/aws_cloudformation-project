@@ -9,6 +9,10 @@ class DeployStackFailedError(Exception):
     pass
 
 
+class DeleteStackFailedError(Exception):
+    pass
+
+
 class CreateStackChangeSetButNotChangeError(Exception):
     pass
 

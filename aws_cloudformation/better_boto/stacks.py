@@ -409,10 +409,118 @@ def delete_stack(
     bsm.cloudformation_client.delete_stack(**resolve_kwargs(**kwargs))
 
 
+# ------------------------------------------------------------------------------
+# Waiter
+# ------------------------------------------------------------------------------
+def _handle_failed_in_waiter(
+    aws_console: AWSConsole,
+    stack: Stack,
+    failed_log_printed: bool,
+    wait_until_exec_stopped: bool,
+) -> T.Tuple[bool, bool, Exception]:
+    if failed_log_printed is False:
+        print(
+            f"\n    reached status 🔴 {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}"
+        )
+        failed_log_printed = True
+    console_url = aws_console.cloudformation.get_stack_events(stack.id)
+    has_error = True
+    error = exc.DeployStackFailedError(f"preview failed events: {console_url}")
+    if wait_until_exec_stopped is False:
+        raise error
+    return failed_log_printed, has_error, error
+
+
+def _handle_stopped_in_waiter(
+    stack: "Stack",
+    has_error: bool,
+    error: T.Optional[Exception],
+    verbose: bool,
+):
+    if verbose:
+        if stack.is_success():
+            icon = "🟢"
+        else:
+            icon = "🔴"
+        print(
+            f"\n    reached status {icon} {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
+        )
+    if has_error:
+        raise error
+
+
+def wait_delete_stack_to_finish(
+    bsm: "BotoSesManager",
+    stack_id: str,
+    wait_until_exec_stopped: bool,
+    delays: T.Union[int, float],
+    timeout: T.Union[int, float],
+    verbose: bool,
+):
+    """
+    You can run this function after you run :func:`delete_stack`. It will
+    wait until the stack deletion success or fail.
+    or timeout.
+
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param stack_id: the unique stack id, you cannot use stack_name here
+    :param wait_until_exec_stopped: if False, it will raise an
+        :class:`~aws_cloudformation.exc.DeleteStackFailedError` exception immediately
+        when there is an error and the stack starting to roll back. Note that
+        the stack will take some time to reach stopped status after it failed,
+        you may not to run another deploy immediately. if True, it will raise
+        the exception after the stack reaching ``stopped`` status.
+    :param delays: how long it waits (in seconds) between two "get status" api call
+    :param timeout: how long it will raise timeout error
+    :param verbose: whether you want to log information to console
+
+    :return: Nothing
+    """
+    if verbose:  # pragma: no cover
+        print(f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} ...")
+
+    failed_log_printed = False
+    has_error: bool = False
+    error: T.Optional[Exception] = None
+
+    aws_console = AWSConsole(aws_region=bsm.aws_region)
+
+    for _ in Waiter(
+        delays=delays,
+        timeout=timeout,
+        indent=4,
+        verbose=verbose,
+    ):
+        stacks = describe_stacks(bsm, name=stack_id).all()
+        if len(stacks) == 0:
+            if verbose:  # pragma: no cover
+                print(f"\n    🟢 already deleted.")
+            return
+
+        stack = stacks[0]
+
+        if stack.is_failed():
+            failed_log_printed, has_error, error = _handle_failed_in_waiter(
+                aws_console=aws_console,
+                stack=stack,
+                failed_log_printed=failed_log_printed,
+                wait_until_exec_stopped=wait_until_exec_stopped,
+            )
+
+        if stack.is_stopped():
+            _handle_stopped_in_waiter(
+                stack=stack,
+                has_error=has_error,
+                error=error,
+                verbose=verbose,
+            )
+            return
+
+
 def wait_create_or_update_stack_to_finish(
     bsm: "BotoSesManager",
     stack_name: str,
-    wait_until_stopped: bool,
+    wait_until_exec_stopped: bool,
     delays: T.Union[int, float],
     timeout: T.Union[int, float],
     verbose: bool,
@@ -429,7 +537,7 @@ def wait_create_or_update_stack_to_finish(
 
     :param bsm: ``boto_session_manager.BotoSesManager`` object
     :param stack_name: the stack name or unique stack id
-    :param wait_until_stopped: if False, it will raise an
+    :param wait_until_exec_stopped: if False, it will raise an
         :class:`~aws_cloudformation.exc.DeployStackFailedError` exception immediately
         when there is an error and the stack starting to roll back. Note that
         the stack will take some time to reach stopped status after it failed,
@@ -449,6 +557,9 @@ def wait_create_or_update_stack_to_finish(
     failed_log_printed = False
     has_error: bool = False
     error: T.Optional[Exception] = None
+
+    aws_console = AWSConsole(aws_region=bsm.aws_region)
+
     for _ in Waiter(
         delays=delays,
         timeout=timeout,
@@ -462,80 +573,21 @@ def wait_create_or_update_stack_to_finish(
             stack = describe_live_stack(bsm, stack_name)
 
         if stack.is_failed():
-            if failed_log_printed is False:
-                print(
-                    f"\n    reached status 🔴 {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}"
-                )
-                failed_log_printed = True
-            aws_console = AWSConsole(
-                aws_region=bsm.aws_region,
-                bsm=bsm,
+            failed_log_printed, has_error, error = _handle_failed_in_waiter(
+                aws_console=aws_console,
+                stack=stack,
+                failed_log_printed=failed_log_printed,
+                wait_until_exec_stopped=wait_until_exec_stopped,
             )
-            console_url = aws_console.cloudformation.get_stack_events(stack_name)
-            has_error = True
-            error = exc.DeployStackFailedError(f"preview failed events: {console_url}")
-            if wait_until_stopped is False:
-                raise error
 
         if stack.is_stopped():
-            if verbose:  # pragma: no cover
-                if stack.is_success():
-                    icon = "🟢"
-                else:
-                    icon = "🔴"
-                print(
-                    f"\n    reached status {icon} {Fore.CYAN}{stack.status.value!r}{Style.RESET_ALL}"
-                )
-            if has_error:
-                raise error
+            _handle_stopped_in_waiter(
+                stack=stack,
+                has_error=has_error,
+                error=error,
+                verbose=verbose,
+            )
             return stack
-
-
-def wait_delete_stack_to_finish(
-    bsm: "BotoSesManager",
-    stack_id: str,
-    delays: T.Union[int, float],
-    timeout: T.Union[int, float],
-    verbose: bool,
-):
-    """
-    You can run this function after you run :func:`delete_stack`. It will
-    wait until the stack deletion success or fail.
-    or timeout.
-
-    :param bsm: ``boto_session_manager.BotoSesManager`` object
-    :param stack_id: the unique stack id, you cannot use stack_name here
-    :param delays: how long it waits (in seconds) between two "get status" api call
-    :param timeout: how long it will raise timeout error
-    :param verbose: whether you want to log information to console
-
-    :return: Nothing
-    """
-    if verbose:  # pragma: no cover
-        print(f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} ...")
-    for _ in Waiter(
-        delays=delays,
-        timeout=timeout,
-        indent=4,
-        verbose=verbose,
-    ):
-        stacks = describe_stacks(bsm, name=stack_id).all()
-        if len(stacks) == 0:
-            if verbose:  # pragma: no cover
-                print(f"\n    🟢 already deleted.")
-            return
-        else:
-            stack = stacks[0]
-            if stack.is_stopped():
-                if verbose:  # pragma: no cover
-                    if stack.is_success():
-                        icon = "🟢"
-                    else:
-                        icon = "🔴"
-                    print(
-                        f"\n    reached status {icon} {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
-                    )
-            return
 
 
 def wait_create_change_set_to_finish(

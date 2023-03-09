@@ -89,6 +89,7 @@ def _deploy_stack_without_change_set(
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
+    wait_until_exec_stopped_on_failure: bool = False,
     skip_prompt: bool = False,
     verbose: bool = True,
 ) -> T.Optional[str]:
@@ -155,7 +156,7 @@ def _deploy_stack_without_change_set(
                 f"  📋 preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}"
             )
 
-        if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
+        if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:  # pragma: no cover
             raise ValueError(
                 f"You cannot update a stack when status is {StackStatusEnum.REVIEW_IN_PROGRESS.value}! "
                 f"It could be because you created the stack using change set, "
@@ -206,7 +207,7 @@ def _deploy_stack_without_change_set(
         except Exception as e:
             if "No updates are to be performed" in str(e):
                 if verbose:
-                    print("  No updates are to be performed.")
+                    print("  🟡 no updates are to be performed.")
                 return None
             else:  # pragma: no cover
                 raise e
@@ -216,6 +217,7 @@ def _deploy_stack_without_change_set(
         better_boto.wait_create_or_update_stack_to_finish(
             bsm=bsm,
             stack_name=stack_id,
+            wait_until_exec_stopped=wait_until_exec_stopped_on_failure,
             delays=delays,
             timeout=timeout,
             verbose=verbose,
@@ -251,6 +253,7 @@ def _deploy_stack_using_change_set(
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
+    wait_until_exec_stopped_on_failure: bool = False,
     change_set_delays: T.Union[int, float] = DEFAULT_CHANGE_SET_DELAYS,
     change_set_timeout: T.Union[int, float] = DEFAULT_CHANGE_SET_TIMEOUT,
     skip_prompt: bool = False,
@@ -299,7 +302,7 @@ def _deploy_stack_using_change_set(
         create_change_set_kwargs["change_set_type_is_create"] = True
     # already exist, do update
     else:
-        if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
+        if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:  # pragma: no cover
             raise ValueError(
                 f"You cannot update a stack when status is {StackStatusEnum.REVIEW_IN_PROGRESS.value}! "
                 f"It could be because you created the stack using change set, "
@@ -338,14 +341,15 @@ def _deploy_stack_using_change_set(
                 bsm=bsm,
                 include_nested_stack=plan_nested_stack,
             )
-    except TimeoutError as e:
+    except TimeoutError as e:  # pragma: no cover
         raise e
     except exc.CreateStackChangeSetButNotChangeError as e:
         print(
-            f"    The submitted information didn't contain changes. Submit different information to create a change set."
+            f"    🟡 the submitted information didn't contain changes. "
+            f"Submit different information to create a change set."
         )
         return
-    except exc.CreateStackChangeSetFailedError as e:
+    except exc.CreateStackChangeSetFailedError as e:  # pragma: no cover
         raise e
 
     print("    need to execute the change set to apply those changes.")
@@ -381,10 +385,20 @@ def _deploy_stack_using_change_set(
         better_boto.wait_create_or_update_stack_to_finish(
             bsm=bsm,
             stack_name=stack_id,
+            wait_until_exec_stopped=wait_until_exec_stopped_on_failure,
             delays=delays,
             timeout=timeout,
             verbose=verbose,
         )
+
+
+def _find_ruler_length(stack_name: str) -> int:
+    if len(stack_name) <= 36:
+        return 80
+    elif len(stack_name) <= 76:
+        return 120
+    else:  # pragma: no cover
+        return 172
 
 
 def deploy_stack(
@@ -414,6 +428,7 @@ def deploy_stack(
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
+    wait_until_exec_stopped_on_failure: bool = False,
     plan_nested_stack: bool = True,
     skip_plan: bool = False,
     skip_prompt: bool = False,
@@ -455,11 +470,12 @@ def deploy_stack(
     :param rollback_configuration: see "Create Stack Boto3 API" link
     :param notification_arns: see "Create Stack Boto3 API" link
     :param on_failure_do_nothing: only used when you create stack directly,
-        not using change set.
+        not using change set. If you set skip_plan = True, then this parameter
+        will be ignored.
     :param on_failure_rollback: only used when you create stack directly,
         not using change set.
     :param on_failure_delete: only used when you create stack directly,
-        not using change set.
+        this arg will be ignored if it is an update, or using change set.
     :param wait: default True; if True, then wait the create / update action
         to success or fail; if False, then it is an async call and return immediately;
         note that if you have skip_plan is False (using change set), you always
@@ -467,6 +483,12 @@ def deploy_stack(
     :param delays: how long it waits (in seconds) between two
         "describe_stacks" api call to get the stack status
     :param timeout: how long it will raise timeout error
+    :param wait_until_exec_stopped_on_failure: if False, it will raise an
+        :class:`~aws_cloudformation.exc.DeployStackFailedError` exception immediately
+        when there is an error and the stack starting to roll back. Note that
+        the stack will take some time to reach stopped status after it failed,
+        you may not to run another deploy immediately. if True, it will raise
+        the exception after the stack reaching ``stopped`` status.
     :param skip_plan: default False; if False, force to use change set to
         create / update; if True, then do create / update without change set.
     :param skip_prompt: default False; if False, you have to enter "Yes"
@@ -481,10 +503,11 @@ def deploy_stack(
     .. versionadded:: 0.1.1
     """
     if verbose:
+        length = _find_ruler_length(stack_name)
         print_header(
             f"🚀 {Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
             "=",
-            80,
+            length,
         )
         console_url = get_stacks_view_console_url(stack_name=stack_name)
         print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
@@ -517,6 +540,7 @@ def deploy_stack(
             wait=wait,
             delays=delays,
             timeout=timeout,
+            wait_until_exec_stopped_on_failure=wait_until_exec_stopped_on_failure,
             skip_prompt=skip_prompt,
             verbose=verbose,
         )
@@ -543,6 +567,7 @@ def deploy_stack(
             wait=wait,
             delays=delays,
             timeout=timeout,
+            wait_until_exec_stopped_on_failure=wait_until_exec_stopped_on_failure,
             change_set_delays=change_set_delays,
             change_set_timeout=change_set_timeout,
             skip_prompt=skip_prompt,
@@ -562,6 +587,7 @@ def remove_stack(
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
+    wait_until_exec_stopped_on_failure: bool = False,
     skip_prompt: bool = False,
     verbose: bool = True,
 ):
@@ -582,6 +608,12 @@ def remove_stack(
     :param delays: how long it waits (in seconds) between two
         "describe_stacks" api call to get the stack status
     :param timeout: how long it will raise timeout error
+    :param wait_until_exec_stopped_on_failure: if False, it will raise an
+        :class:`~aws_cloudformation.exc.DeleteStackFailedError` exception immediately
+        when there is an error and the stack starting to roll back. Note that
+        the stack will take some time to reach stopped status after it failed,
+        you may not to run another deploy immediately. if True, it will raise
+        the exception after the stack reaching ``stopped`` status.
     :param skip_prompt: default False; if False, you have to enter "Yes"
         in prompt to do deletion; if True, then execute the deletion directly.
     :param verbose: whether you want to log information to console
@@ -590,13 +622,15 @@ def remove_stack(
 
     .. versionadded:: 0.1.1
     """
-    print_header(
-        f"🗑 {Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
-        "=",
-        80,
-    )
 
     if verbose:
+        length = _find_ruler_length(stack_name)
+        print_header(
+            f"🗑 {Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
+            "=",
+            length,
+        )
+
         console_url = get_stacks_view_console_url(stack_name)
         print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
 
@@ -624,6 +658,7 @@ def remove_stack(
         better_boto.wait_delete_stack_to_finish(
             bsm=bsm,
             stack_id=stack.id,
+            wait_until_exec_stopped=wait_until_exec_stopped_on_failure,
             delays=delays,
             timeout=timeout,
             verbose=verbose,
