@@ -94,7 +94,8 @@ class TestWaiter:
                 },
             ],
         }
-        visualize_change_set(ChangeSet.from_dict(response), _verbose=True)
+        change_set = ChangeSet.from_describe_change_set_response(response)
+        visualize_change_set(change_set, _verbose=True)
 
 
 if __name__ == "__main__":

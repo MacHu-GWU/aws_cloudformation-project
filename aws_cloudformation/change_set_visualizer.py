@@ -7,7 +7,9 @@ from collections import Counter
 
 from colorama import Fore, Style
 
-from .better_boto import describe_change_set
+from .better_boto import describe_change_set_with_paginator
+from .stack import ChangeSet
+
 
 if T.TYPE_CHECKING:
     from boto_session_manager import BotoSesManager
@@ -120,32 +122,32 @@ def sort_changes(changes: T.Iterable[ResourceChange]) -> T.Iterable[ResourceChan
     )
 
 
-@dataclasses.dataclass
-class ChangeSet:
-    change_set_id: str = dataclasses.field()
-    change_set_name: str = dataclasses.field()
-    stack_id: str = dataclasses.field()
-    stack_name: str = dataclasses.field()
-    description: T.Optional[str] = dataclasses.field(default=None)
-    changes: T.List[ResourceChange] = dataclasses.field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, dct: dict) -> "ChangeSet":
-        """
-
-        :param dct: the ``cloudformation_client.describe_change_set`` response.
-        """
-        return cls(
-            change_set_id=dct["ChangeSetId"],
-            change_set_name=dct["ChangeSetName"],
-            stack_id=dct["StackId"],
-            stack_name=dct["StackName"],
-            description=dct.get("Description"),
-            changes=[
-                ResourceChange.from_dict(d["ResourceChange"])
-                for d in dct.get("Changes", [])
-            ],
-        )
+# @dataclasses.dataclass
+# class ChangeSet:
+#     change_set_id: str = dataclasses.field()
+#     change_set_name: str = dataclasses.field()
+#     stack_id: str = dataclasses.field()
+#     stack_name: str = dataclasses.field()
+#     description: T.Optional[str] = dataclasses.field(default=None)
+#     changes: T.List[ResourceChange] = dataclasses.field(default_factory=list)
+#
+#     @classmethod
+#     def from_dict(cls, dct: dict) -> "ChangeSet":
+#         """
+#
+#         :param dct: the ``cloudformation_client.describe_change_set`` response.
+#         """
+#         return cls(
+#             change_set_id=dct["ChangeSetId"],
+#             change_set_name=dct["ChangeSetName"],
+#             stack_id=dct["StackId"],
+#             stack_name=dct["StackName"],
+#             description=dct.get("Description"),
+#             changes=[
+#                 ResourceChange.from_dict(d["ResourceChange"])
+#                 for d in dct.get("Changes", [])
+#             ],
+#         )
 
 
 ICON_ADD = "🟢"
@@ -191,7 +193,15 @@ def visualize_change_set(
     )
     print(f"stack id = {Fore.CYAN}{change_set.stack_id}{Style.RESET_ALL}")
     print(f"change set id = {Fore.CYAN}{change_set.change_set_id}{Style.RESET_ALL}")
-    resource_change_list = list(sort_changes(change_set.changes))
+
+    resource_change_list = list(
+        sort_changes(
+            [
+                ResourceChange.from_dict(d["ResourceChange"])
+                for d in change_set.changes
+            ]
+        )
+    )
     action_counter = Counter(
         [resource_change.action for resource_change in resource_change_list]
     )
@@ -251,12 +261,12 @@ def visualize_change_set(
     if include_nested_stack:
         for resource_change in resource_change_list:
             if resource_change.change_set_id is not None:
-                response = describe_change_set(
+                change_set = describe_change_set_with_paginator(
                     bsm=bsm,
                     change_set_name=resource_change.change_set_id,
                 )
                 visualize_change_set(
-                    change_set=ChangeSet.from_dict(response),
+                    change_set=change_set,
                     bsm=bsm,
                     include_nested_stack=include_nested_stack,
                 )
