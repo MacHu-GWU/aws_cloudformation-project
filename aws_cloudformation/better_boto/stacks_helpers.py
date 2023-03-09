@@ -120,28 +120,29 @@ def resolve_on_failure(
     on_failure_rollback: T.Optional[bool] = False,
     on_failure_delete: T.Optional[bool] = False,
 ):
-    if (
-        sum(
-            [
-                on_failure_do_nothing,
-                on_failure_rollback,
-                on_failure_delete,
-            ]
-        )
-        > 1
-    ):  # pragma: no cover
+    true_flag_count = sum(
+        [
+            on_failure_do_nothing,
+            on_failure_rollback,
+            on_failure_delete,
+        ]
+    )
+    if true_flag_count == 0:
+        return
+    elif true_flag_count == 1: # pragma: no cover
+        if on_failure_do_nothing:
+            kwargs["OnFailure"] = "DO_NOTHING"
+        elif on_failure_rollback:
+            kwargs["OnFailure"] = "ROLLBACK"
+        elif on_failure_delete:
+            kwargs["OnFailure"] = "DELETE"
+        else:  # pragma: no cover
+            raise NotImplementedError
+    else: # pragma: no cover
         raise ValueError(
             "You can only set one of "
             "on_failure_do_nothing, on_failure_rollback, on_failure_delete to True!"
         )
-    if on_failure_do_nothing:
-        kwargs["OnFailure"] = "DO_NOTHING"
-    elif on_failure_rollback:
-        kwargs["OnFailure"] = "ROLLBACK"
-    elif on_failure_delete:
-        kwargs["OnFailure"] = "DELETE"
-    else:  # pragma: no cover
-        raise NotImplementedError
 
 
 def resolve_create_update_stack_common_kwargs(

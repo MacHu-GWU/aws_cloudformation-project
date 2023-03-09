@@ -5,7 +5,6 @@ AWS CloudFormation Stack related operations.
 """
 
 import typing as T
-import sys
 from datetime import datetime
 
 from boto_session_manager import BotoSesManager, AwsServiceEnum
@@ -14,20 +13,15 @@ from func_args import NOTHING, resolve_kwargs
 from colorama import Fore, Style
 
 from .. import exc
-from .. import helper
-from ..console import get_s3_console_url
 from ..waiter import Waiter
 from ..stack import (
     Parameter,
     Stack,
     ChangeSetStatusEnum,
-    ChangeSetTypeEnum,
     ChangeSet,
 )
 
 from .stacks_helpers import (
-    resolve_parameters,
-    resolve_tags,
     resolve_on_failure,
     resolve_create_update_stack_common_kwargs,
     resolve_change_set_type,
@@ -96,69 +90,69 @@ def describe_live_stack(
         return None
 
 
-DEFAULT_S3_PREFIX_FOR_TEMPLATE = "cloudformation/template"
-DEFAULT_S3_PREFIX_FOR_STACK_POLICY = "cloudformation/policy"
-
-# See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
-TEMPLATE_BODY_SIZE_LIMIT = 51200
-STACK_POLICY_SIZE_LIMIT = 16384
-
-DEFAULT_CHANGE_SET_DELAYS = 5
-DEFAULT_CHANGE_SET_TIMEOUT = 60
-DEFAULT_UPDATE_DELAYS = 5
-DEFAULT_UPDATE_TIMEOUT = 60
-
-
-def detect_template_type(template: str) -> str:
-    """
-
-    :return: "json" or "yaml"
-    """
-    if template.strip().startswith("{"):
-        return "json"
-    else:
-        return "yaml"
+# DEFAULT_S3_PREFIX_FOR_TEMPLATE = "cloudformation/template"
+# DEFAULT_S3_PREFIX_FOR_STACK_POLICY = "cloudformation/policy"
+#
+# # See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
+# TEMPLATE_BODY_SIZE_LIMIT = 51200
+# STACK_POLICY_SIZE_LIMIT = 16384
+#
+# DEFAULT_CHANGE_SET_DELAYS = 5
+# DEFAULT_CHANGE_SET_TIMEOUT = 60
+# DEFAULT_UPDATE_DELAYS = 5
+# DEFAULT_UPDATE_TIMEOUT = 60
 
 
-def upload_template_to_s3(
-    bsm: BotoSesManager,
-    template: str,
-    bucket: str,
-    prefix: T.Optional[str] = None,
-    verbose: bool = True,
-) -> str:
-    """
-    Upload the CloudFormation template body to S3 before deployment.
-    The target location is: s3://${bucket}/${prefix}/${md5_of_template_body}.${json_or_yaml}.
-
-    :param bsm: ``boto_session_manager.BotoSesManager`` object
-    :param template: template Body in string
-    :param bucket: s3 bucket name
-    :param prefix: s3 prefix
-
-    :return: the template url (NOT s3 uri) for the template uploads.
-    """
-    s3_client = bsm.get_client(AwsServiceEnum.S3)
-    template_type = detect_template_type(template)
-    md5 = helper.md5_of_text(template)
-    if prefix:
-        if not prefix.endswith("/"):
-            prefix = prefix + "/"
-    else:
-        prefix = ""
-    key = f"{prefix}{md5}.{template_type}"
-    s3_uri = f"s3://{bucket}/{key}"
-    template_url = f"https://s3.amazonaws.com/{bucket}/{key}"
-    if verbose:
-        print(f"  upload template to {s3_uri} ...")
-        console_url = get_s3_console_url(bucket=bucket, prefix=key)
-        print(f"    preview at {console_url}")
-    s3_client.put_object(
-        Bucket=bucket,
-        Key=key,
-        Body=template,
-    )
-    return template_url
+# def detect_template_type(template: str) -> str:
+#     """
+#
+#     :return: "json" or "yaml"
+#     """
+#     if template.strip().startswith("{"):
+#         return "json"
+#     else:
+#         return "yaml"
+#
+#
+# def upload_template_to_s3(
+#     bsm: BotoSesManager,
+#     template: str,
+#     bucket: str,
+#     prefix: T.Optional[str] = None,
+#     verbose: bool = True,
+# ) -> str:
+#     """
+#     Upload the CloudFormation template body to S3 before deployment.
+#     The target location is: s3://${bucket}/${prefix}/${md5_of_template_body}.${json_or_yaml}.
+#
+#     :param bsm: ``boto_session_manager.BotoSesManager`` object
+#     :param template: template Body in string
+#     :param bucket: s3 bucket name
+#     :param prefix: s3 prefix
+#
+#     :return: the template url (NOT s3 uri) for the template uploads.
+#     """
+#     s3_client = bsm.get_client(AwsServiceEnum.S3)
+#     template_type = detect_template_type(template)
+#     md5 = helper.md5_of_text(template)
+#     if prefix:
+#         if not prefix.endswith("/"):
+#             prefix = prefix + "/"
+#     else:
+#         prefix = ""
+#     key = f"{prefix}{md5}.{template_type}"
+#     s3_uri = f"s3://{bucket}/{key}"
+#     template_url = f"https://s3.amazonaws.com/{bucket}/{key}"
+#     if verbose: # pragma: no cover
+#         print(f"  upload template to {s3_uri} ...")
+#         console_url = get_s3_console_url(bucket=bucket, prefix=key)
+#         print(f"    preview at {console_url}")
+#     s3_client.put_object(
+#         Bucket=bucket,
+#         Key=key,
+#         Body=template,
+#     )
+#     return template_url
 
 
 def create_stack(
@@ -225,7 +219,9 @@ def create_stack(
         include_named_iam=include_named_iam,
         include_macro=include_macro,
     )
-    response = bsm.cloudformation_client.create_stack(**kwargs)
+    response = bsm.cloudformation_client.create_stack(
+        **resolve_kwargs(**kwargs)
+    )
     stack_id = response["StackId"]
     return stack_id
 
@@ -250,7 +246,7 @@ def update_stack(
     stack_policy_during_update_body: T.Optional[str] = NOTHING,
     stack_policy_during_update_url: T.Optional[str] = NOTHING,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
-    client_request_token: T.Optional[str] = None,
+    client_request_token: T.Optional[str] = NOTHING,
     verbose: bool = True,
 ) -> str:
     """
@@ -287,7 +283,9 @@ def update_stack(
         include_named_iam=include_named_iam,
         include_macro=include_macro,
     )
-    response = bsm.cloudformation_client.update_stack(**kwargs)
+    response = bsm.cloudformation_client.update_stack(
+        **resolve_kwargs(**kwargs)
+    )
     stack_id = response["StackId"]
     return stack_id
 
@@ -360,7 +358,9 @@ def create_change_set(
         include_named_iam=include_named_iam,
         include_macro=include_macro,
     )
-    response = bsm.cloudformation_client.create_change_set(**kwargs)
+    response = bsm.cloudformation_client.create_change_set(
+        **resolve_kwargs(**kwargs)
+    )
     stack_id = response["StackId"]
     change_set_id = response["Id"]
     return stack_id, change_set_id
@@ -385,9 +385,17 @@ def describe_change_set(
         StackName=stack_name,
         NextToken=next_token,
     )
-    response = bsm.cloudformation_client.describe_change_set(**resolve_kwargs(**kwargs))
-    change_set = parse_describe_change_set_response(response)
-    return change_set
+    try:
+        response = bsm.cloudformation_client.describe_change_set(
+            **resolve_kwargs(**kwargs)
+        )
+        change_set = parse_describe_change_set_response(response)
+        return change_set
+    except Exception as e:
+        if "does not exist" in str(e):
+            return None
+        else:
+            raise e
 
 
 def describe_change_set_with_paginator(
@@ -498,7 +506,7 @@ def wait_create_or_update_stack_to_finish(
 
     :return: a :class:`~aws_cottonformation.stack.Stack` object.
     """
-    if verbose:
+    if verbose: # pragma: no cover # pragma: no cover
         print(f" {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} ...")
     for _ in Waiter(
         delays=delays,
@@ -508,7 +516,7 @@ def wait_create_or_update_stack_to_finish(
     ):
         stack = describe_live_stack(bsm, stack_name)
         if stack.status.is_stopped():
-            if verbose:
+            if verbose: # pragma: no cover
                 if stack.status.is_success():
                     icon = "🟢"
                 else:
@@ -539,7 +547,7 @@ def wait_delete_stack_to_finish(
 
     :return: Nothing
     """
-    if verbose:
+    if verbose: # pragma: no cover
         print(f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} ...")
     for _ in Waiter(
         delays=delays,
@@ -549,12 +557,12 @@ def wait_delete_stack_to_finish(
     ):
         stack = describe_live_stack(bsm, stack_id)
         if stack is None:
-            if verbose:
+            if verbose: # pragma: no cover
                 print(f"\n    already deleted.")
             return
         else:
             if stack.status.is_stopped():
-                if verbose:
+                if verbose: # pragma: no cover
                     print(
                         f"\n    reached status {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
                     )
@@ -582,7 +590,7 @@ def wait_create_change_set_to_finish(
 
     :return: ``ChangeSet`` object
     """
-    if verbose:
+    if verbose: # pragma: no cover
         print(
             f"  {Fore.CYAN}wait for change set creation to finish{Style.RESET_ALL} ..."
         )
@@ -605,12 +613,12 @@ def wait_create_change_set_to_finish(
             ChangeSetStatusEnum.CREATE_COMPLETE.value,
             ChangeSetStatusEnum.FAILED.value,
         ]:
-            if verbose:
+            if verbose: # pragma: no cover
                 print(
                     f"\n    reached status {Fore.CYAN}{change_set.status}{Style.RESET_ALL}"
                 )
 
-            if change_set.status == ChangeSetStatusEnum.FAILED.value:
+            if change_set.status == ChangeSetStatusEnum.FAILED.value: # pragma: no cover
                 if (
                     "The submitted information didn't contain changes."
                     in change_set.status_reason
@@ -621,7 +629,7 @@ def wait_create_change_set_to_finish(
                 else:
                     raise exc.CreateStackChangeSetFailedError(change_set.status_reason)
 
-            if bool(change_set.next_token) and (bool(len(change_set.changes))):
+            if bool(change_set.next_token) and (bool(len(change_set.changes))): # pragma: no cover
                 describe_change_set_with_paginator(
                     bsm=bsm,
                     change_set_name=change_set_id,

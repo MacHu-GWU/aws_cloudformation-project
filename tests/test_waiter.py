@@ -10,8 +10,8 @@ class TestWaiter:
             for _ in Waiter(
                 delays=1,
                 timeout=3,
-                verbose=True,
-                # verbose=False,
+                # verbose=True,
+                verbose=False,
             ):
                 pass
 

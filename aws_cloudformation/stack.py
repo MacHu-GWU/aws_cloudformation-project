@@ -291,3 +291,52 @@ class ChangeSet:
     next_token: T.Optional[str] = dataclasses.field(default=None)
     parent_change_set_id: T.Optional[str] = dataclasses.field(default=None)
     root_change_set_id: T.Optional[str] = dataclasses.field(default=None)
+
+    def is_status_create_pending(self) -> bool:
+        return self.status == ChangeSetStatusEnum.CREATE_PENDING.value
+
+    def is_status_create_in_progress(self) -> bool:
+        return self.status == ChangeSetStatusEnum.CREATE_IN_PROGRESS.value
+
+    def is_status_create_complete(self) -> bool:
+        return self.status == ChangeSetStatusEnum.CREATE_COMPLETE.value
+
+    def is_status_delete_pending(self) -> bool:
+        return self.status == ChangeSetStatusEnum.DELETE_PENDING.value
+
+    def is_status_delete_in_progress(self) -> bool:
+        return self.status == ChangeSetStatusEnum.DELETE_IN_PROGRESS.value
+
+    def is_status_delete_complete(self) -> bool:
+        return self.status == ChangeSetStatusEnum.DELETE_COMPLETE.value
+
+    def is_status_delete_failed(self) -> bool:
+        return self.status == ChangeSetStatusEnum.DELETE_FAILED.value
+
+    def is_status_failed(self) -> bool:
+        return self.status == ChangeSetStatusEnum.FAILED.value
+
+    def is_exec_status_unavailable(self) -> bool:
+        return self.execution_status == ChangeSetExecutionStatusEnum.UNAVAILABLE.value
+
+    def is_exec_status_available(self) -> bool:
+        return self.execution_status == ChangeSetExecutionStatusEnum.AVAILABLE.value
+
+    def is_exec_status_execute_in_progress(self) -> bool:
+        return (
+            self.execution_status
+            == ChangeSetExecutionStatusEnum.EXECUTE_IN_PROGRESS.value
+        )
+
+    def is_exec_status_execute_complete(self) -> bool:
+        return (
+            self.execution_status == ChangeSetExecutionStatusEnum.EXECUTE_COMPLETE.value
+        )
+
+    def is_exec_status_execute_failed(self) -> bool:
+        return (
+            self.execution_status == ChangeSetExecutionStatusEnum.EXECUTE_FAILED.value
+        )
+
+    def is_exec_status_obsolete(self) -> bool:
+        return self.execution_status == ChangeSetExecutionStatusEnum.OBSOLETE.value
