@@ -151,6 +151,7 @@ class Test(BaseTest):
         aws_cf.better_boto.wait_delete_stack_to_finish(
             bsm=self.bsm,
             stack_id=stack_id,
+            wait_until_exec_stopped=True,
             delays=1,
             timeout=3,
             verbose=False,
@@ -199,6 +200,7 @@ class Test(BaseTest):
         aws_cf.better_boto.wait_create_or_update_stack_to_finish(
             bsm=self.bsm,
             stack_name=stack_name,
+            wait_until_exec_stopped=True,
             delays=1,
             timeout=3,
             verbose=False
@@ -225,6 +227,7 @@ class Test(BaseTest):
         aws_cf.better_boto.wait_create_or_update_stack_to_finish(
             bsm=self.bsm,
             stack_name=stack_name,
+            wait_until_exec_stopped=True,
             delays=1,
             timeout=3,
             verbose=False
