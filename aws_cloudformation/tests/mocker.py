@@ -23,7 +23,7 @@ class BaseTest:
         cls.mock_iam.start()
         cls.mock_cf.start()
         cls.mock_sts.start()
-        cls.bsm = BotoSesManager()
+        cls.bsm = BotoSesManager(region_name="us-east-1")
 
         cls.setup_s3_bucket()
 
