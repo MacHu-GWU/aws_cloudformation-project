@@ -32,10 +32,6 @@ class Test(BaseTest):
                 value=project_name,
             )
         ]
-        tpl1 = make_tpl_1()
-        tpl2 = make_tpl_2()
-        tpl3 = make_tpl_3()
-        tpl4 = make_tpl_4()
 
         self.bsm.s3_client.create_bucket(Bucket=bucket)
         env = cf.Env(bsm=self.bsm)
@@ -111,7 +107,6 @@ class Test(BaseTest):
         deployment_2()
         deployment_3()
         deployment_4()
-        delete_it()
 
 
 if __name__ == "__main__":
