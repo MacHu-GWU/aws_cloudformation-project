@@ -15,6 +15,7 @@ __github_username__ = "MacHu-GWU"
 
 try:
     from . import better_boto
+    from . import exc
     from .deploy import (
         deploy_stack,
         remove_stack,
