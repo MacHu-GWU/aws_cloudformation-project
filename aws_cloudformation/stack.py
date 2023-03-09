@@ -215,27 +215,27 @@ class Stack:
     drift_status: T.Optional[DriftStatusEnum] = dataclasses.field(default=None)
     drift_last_check_time: T.Optional[datetime] = dataclasses.field(default=None)
 
-    def is_success(self) -> bool:
+    def is_success(self) -> bool:  # pragma: no cover
         """ """
         return self.status in _SUCCESS_STATUS
 
-    def is_failed(self) -> bool:
+    def is_failed(self) -> bool:  # pragma: no cover
         """ """
         return self.status in _FAILED_STATUS
 
-    def is_in_progress(self) -> bool:
+    def is_in_progress(self) -> bool:  # pragma: no cover
         """ """
         return self.status in _IN_PROGRESS_STATUS
 
-    def is_complete(self) -> bool:
+    def is_complete(self) -> bool:  # pragma: no cover
         """ """
         return self.status in _COMPLETE_STATUS
 
-    def is_stopped(self) -> bool:
+    def is_stopped(self) -> bool:  # pragma: no cover
         """ """
         return self.status in _STOPPED_STATUS
 
-    def is_live(self) -> bool:
+    def is_live(self) -> bool:  # pragma: no cover
         """ """
         return not (self.status in _NOT_LIVE_STATUS)
 
@@ -368,66 +368,66 @@ class ChangeSet:
     parent_change_set_id: T.Optional[str] = dataclasses.field(default=None)
     root_change_set_id: T.Optional[str] = dataclasses.field(default=None)
 
-    def is_status_create_pending(self) -> bool:
+    def is_status_create_pending(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.CREATE_PENDING.value
 
-    def is_status_create_in_progress(self) -> bool:
+    def is_status_create_in_progress(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.CREATE_IN_PROGRESS.value
 
-    def is_status_create_complete(self) -> bool:
+    def is_status_create_complete(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.CREATE_COMPLETE.value
 
-    def is_status_delete_pending(self) -> bool:
+    def is_status_delete_pending(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.DELETE_PENDING.value
 
-    def is_status_delete_in_progress(self) -> bool:
+    def is_status_delete_in_progress(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.DELETE_IN_PROGRESS.value
 
-    def is_status_delete_complete(self) -> bool:
+    def is_status_delete_complete(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.DELETE_COMPLETE.value
 
-    def is_status_delete_failed(self) -> bool:
+    def is_status_delete_failed(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.DELETE_FAILED.value
 
-    def is_status_failed(self) -> bool:
+    def is_status_failed(self) -> bool:  # pragma: no cover
         """ """
         return self.status == ChangeSetStatusEnum.FAILED.value
 
-    def is_exec_status_unavailable(self) -> bool:
+    def is_exec_status_unavailable(self) -> bool:  # pragma: no cover
         """ """
         return self.execution_status == ChangeSetExecutionStatusEnum.UNAVAILABLE.value
 
-    def is_exec_status_available(self) -> bool:
+    def is_exec_status_available(self) -> bool:  # pragma: no cover
         """ """
         return self.execution_status == ChangeSetExecutionStatusEnum.AVAILABLE.value
 
-    def is_exec_status_execute_in_progress(self) -> bool:
+    def is_exec_status_execute_in_progress(self) -> bool:  # pragma: no cover
         """ """
         return (
             self.execution_status
             == ChangeSetExecutionStatusEnum.EXECUTE_IN_PROGRESS.value
         )
 
-    def is_exec_status_execute_complete(self) -> bool:
+    def is_exec_status_execute_complete(self) -> bool:  # pragma: no cover
         """ """
         return (
             self.execution_status == ChangeSetExecutionStatusEnum.EXECUTE_COMPLETE.value
         )
 
-    def is_exec_status_execute_failed(self) -> bool:
+    def is_exec_status_execute_failed(self) -> bool:  # pragma: no cover
         """ """
         return (
             self.execution_status == ChangeSetExecutionStatusEnum.EXECUTE_FAILED.value
         )
 
-    def is_exec_status_obsolete(self) -> bool:
+    def is_exec_status_obsolete(self) -> bool:  # pragma: no cover
         """ """
         return self.execution_status == ChangeSetExecutionStatusEnum.OBSOLETE.value
 

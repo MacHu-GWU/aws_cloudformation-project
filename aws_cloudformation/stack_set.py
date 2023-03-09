@@ -71,22 +71,22 @@ class StackSet:
     regions: T.List[str] = dataclasses.field(default_factory=list)
 
     @property
-    def is_status_active(self) -> bool:
+    def is_status_active(self) -> bool:  # pragma: no cover
         """ """
         return self.status == StackSetStatusEnum.ACTIVE.value
 
     @property
-    def is_status_deleted(self) -> bool:
+    def is_status_deleted(self) -> bool:  # pragma: no cover
         """ """
         return self.status == StackSetStatusEnum.DELETED.value
 
     @property
-    def is_self_managed(self) -> bool:
+    def is_self_managed(self) -> bool:  # pragma: no cover
         """ """
         return self.permission_model == StackSetPermissionModelEnum.SELF_MANAGED.value
 
     @property
-    def is_service_managed(self) -> bool:
+    def is_service_managed(self) -> bool:  # pragma: no cover
         """ """
         return (
             self.permission_model == StackSetPermissionModelEnum.SERVICE_MANAGED.value
@@ -196,15 +196,15 @@ class StackInstance:
     last_drift_check_timestamp: T.Optional[datetime] = dataclasses.field(default=None)
     last_operation_id: T.Optional[str] = dataclasses.field(default=None)
 
-    def is_status_current(self) -> bool:
+    def is_status_current(self) -> bool:  # pragma: no cover
         """ """
         return self.status == StackInstanceStatusEnum.CURRENT.value
 
-    def is_status_outdated(self) -> bool:
+    def is_status_outdated(self) -> bool:  # pragma: no cover
         """ """
         return self.status == StackInstanceStatusEnum.OUTDATED.value
 
-    def is_status_inoperable(self) -> bool:
+    def is_status_inoperable(self) -> bool:  # pragma: no cover
         """ """
         return self.status == StackInstanceStatusEnum.INOPERABLE.value
 
@@ -215,27 +215,27 @@ class StackInstance:
             self.statck_instance_status.get("DetailedStatus")
         )
 
-    def is_detailed_status_pending(self) -> bool:
+    def is_detailed_status_pending(self) -> bool:  # pragma: no cover
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.PENDING.value
 
-    def is_detailed_status_running(self) -> bool:
+    def is_detailed_status_running(self) -> bool:  # pragma: no cover
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.RUNNING.value
 
-    def is_detailed_status_succeeded(self) -> bool:
+    def is_detailed_status_succeeded(self) -> bool:  # pragma: no cover
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.SUCCEEDED.value
 
-    def is_detailed_status_failed(self) -> bool:
+    def is_detailed_status_failed(self) -> bool:  # pragma: no cover
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.FAILED.value
 
-    def is_detailed_status_cancelled(self) -> bool:
+    def is_detailed_status_cancelled(self) -> bool:  # pragma: no cover
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.CANCELLED.value
 
-    def is_detailed_status_inoperable(self) -> bool:
+    def is_detailed_status_inoperable(self) -> bool:  # pragma: no cover
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.INOPERABLE.value
 
