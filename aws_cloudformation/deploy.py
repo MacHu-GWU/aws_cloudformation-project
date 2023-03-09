@@ -47,12 +47,12 @@ from .deploy_helpers import (
 )
 
 DEFAULT_CHANGE_SET_DELAYS = 5
-DEFAULT_CHANGE_SET_TIMEOUT = 60
+DEFAULT_CHANGE_SET_TIMEOUT = 120
 DEFAULT_UPDATE_DELAYS = 5
-DEFAULT_UPDATE_TIMEOUT = 60
+DEFAULT_UPDATE_TIMEOUT = 120
 
 
-def prompt_to_proceed() -> bool:
+def prompt_to_proceed() -> bool:  # pragma: no cover
     """
     Prompt to ask user to enter: "YES" or "NO"
 
@@ -83,12 +83,15 @@ def _deploy_stack_without_change_set(
     disable_rollback: T.Optional[bool] = NOTHING,
     rollback_configuration: T.Optional[dict] = NOTHING,
     notification_arns: T.Optional[T.List[str]] = NOTHING,
+    on_failure_do_nothing: T.Optional[bool] = False,
+    on_failure_rollback: T.Optional[bool] = False,
+    on_failure_delete: T.Optional[bool] = False,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
     skip_prompt: bool = False,
     verbose: bool = True,
-):
+) -> T.Optional[str]:
     stack = better_boto.describe_live_stack(
         bsm=bsm,
         name=stack_name,
@@ -96,7 +99,8 @@ def _deploy_stack_without_change_set(
 
     # doesn't exist, do create
     if stack is None:
-        if skip_prompt is False:
+        action = "create"
+        if skip_prompt is False:  # pragma: no cover
             if prompt_to_proceed() is False:
                 print("Do nothing.")
                 return
@@ -115,6 +119,9 @@ def _deploy_stack_without_change_set(
             disable_rollback=disable_rollback,
             rollback_configuration=rollback_configuration,
             notification_arns=notification_arns,
+            on_failure_do_nothing=on_failure_do_nothing,
+            on_failure_rollback=on_failure_rollback,
+            on_failure_delete=on_failure_delete,
             verbose=verbose,
         )
         resolve_template_kwargs(
@@ -141,6 +148,7 @@ def _deploy_stack_without_change_set(
             )
     # already exists, do update
     else:
+        action = "update"
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack.id)
             print(
@@ -155,7 +163,7 @@ def _deploy_stack_without_change_set(
                 f"You can delete it and retry."
             )
 
-        if skip_prompt is False:
+        if skip_prompt is False:  # pragma: no cover
             if prompt_to_proceed() is False:
                 print("Do nothing.")
                 return
@@ -200,7 +208,7 @@ def _deploy_stack_without_change_set(
                 if verbose:
                     print("  No updates are to be performed.")
                 return None
-            else:
+            else:  # pragma: no cover
                 raise e
 
     # wait until the stack is finished
@@ -212,6 +220,7 @@ def _deploy_stack_without_change_set(
             timeout=timeout,
             verbose=verbose,
         )
+    return stack_id
 
 
 def change_set_name_suffix() -> str:
@@ -341,7 +350,7 @@ def _deploy_stack_using_change_set(
 
     print("    need to execute the change set to apply those changes.")
 
-    if skip_prompt is False:
+    if skip_prompt is False:  # pragma: no cover
         if prompt_to_proceed() is False:
             # create logic branch
             if stack is None:
@@ -399,6 +408,9 @@ def deploy_stack(
     disable_rollback: T.Optional[bool] = NOTHING,
     rollback_configuration: T.Optional[dict] = NOTHING,
     notification_arns: T.Optional[T.List[str]] = NOTHING,
+    on_failure_do_nothing: T.Optional[bool] = False,
+    on_failure_rollback: T.Optional[bool] = False,
+    on_failure_delete: T.Optional[bool] = False,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
@@ -442,6 +454,12 @@ def deploy_stack(
     :param disable_rollback: see "Create Stack Boto3 API" link
     :param rollback_configuration: see "Create Stack Boto3 API" link
     :param notification_arns: see "Create Stack Boto3 API" link
+    :param on_failure_do_nothing: only used when you create stack directly,
+        not using change set.
+    :param on_failure_rollback: only used when you create stack directly,
+        not using change set.
+    :param on_failure_delete: only used when you create stack directly,
+        not using change set.
     :param wait: default True; if True, then wait the create / update action
         to success or fail; if False, then it is an async call and return immediately;
         note that if you have skip_plan is False (using change set), you always
@@ -493,6 +511,9 @@ def deploy_stack(
             disable_rollback=disable_rollback,
             rollback_configuration=rollback_configuration,
             notification_arns=notification_arns,
+            on_failure_do_nothing=on_failure_do_nothing,
+            on_failure_rollback=on_failure_rollback,
+            on_failure_delete=on_failure_delete,
             wait=wait,
             delays=delays,
             timeout=timeout,
@@ -586,7 +607,7 @@ def remove_stack(
         print("  done!")
         return
 
-    if skip_prompt is False:
+    if skip_prompt is False:  # pragma: no cover
         if prompt_to_proceed() is False:
             print("Do nothing.")
             return
@@ -641,7 +662,7 @@ def deploy_stack_set(
     client_request_token: T.Optional[str] = NOTHING,
     managed_execution_active: bool = False,
     verbose: bool = True,
-):
+):  # pragma: no cover
     aws_console = AWSConsole(
         aws_account_id=bsm.aws_account_id,
         aws_region=bsm.aws_region,
