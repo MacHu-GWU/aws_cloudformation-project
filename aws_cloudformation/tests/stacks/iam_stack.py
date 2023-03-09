@@ -130,6 +130,9 @@ def make_tpl_3() -> cf.Template:
 
 
 def make_tpl_4() -> cf.Template:
+    """
+    Nested Stack
+    """
     tpl = make_tpl_3()
 
     policy4 = iam.ManagedPolicy(

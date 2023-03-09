@@ -11,7 +11,6 @@ from .stacks import (
     describe_live_stack,
     create_stack,
     update_stack,
-    change_set_name_suffix,
     create_change_set,
     describe_change_set,
     describe_change_set_with_paginator,

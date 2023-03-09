@@ -88,71 +88,6 @@ def describe_live_stack(
         return None
 
 
-# DEFAULT_S3_PREFIX_FOR_TEMPLATE = "cloudformation/template"
-# DEFAULT_S3_PREFIX_FOR_STACK_POLICY = "cloudformation/policy"
-#
-# # See: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
-# TEMPLATE_BODY_SIZE_LIMIT = 51200
-# STACK_POLICY_SIZE_LIMIT = 16384
-#
-# DEFAULT_CHANGE_SET_DELAYS = 5
-# DEFAULT_CHANGE_SET_TIMEOUT = 60
-# DEFAULT_UPDATE_DELAYS = 5
-# DEFAULT_UPDATE_TIMEOUT = 60
-
-
-# def detect_template_type(template: str) -> str:
-#     """
-#
-#     :return: "json" or "yaml"
-#     """
-#     if template.strip().startswith("{"):
-#         return "json"
-#     else:
-#         return "yaml"
-#
-#
-# def upload_template_to_s3(
-#     bsm: BotoSesManager,
-#     template: str,
-#     bucket: str,
-#     prefix: T.Optional[str] = None,
-#     verbose: bool = True,
-# ) -> str:
-#     """
-#     Upload the CloudFormation template body to S3 before deployment.
-#     The target location is: s3://${bucket}/${prefix}/${md5_of_template_body}.${json_or_yaml}.
-#
-#     :param bsm: ``boto_session_manager.BotoSesManager`` object
-#     :param template: template Body in string
-#     :param bucket: s3 bucket name
-#     :param prefix: s3 prefix
-#
-#     :return: the template url (NOT s3 uri) for the template uploads.
-#     """
-#     s3_client = bsm.get_client(AwsServiceEnum.S3)
-#     template_type = detect_template_type(template)
-#     md5 = helper.md5_of_text(template)
-#     if prefix:
-#         if not prefix.endswith("/"):
-#             prefix = prefix + "/"
-#     else:
-#         prefix = ""
-#     key = f"{prefix}{md5}.{template_type}"
-#     s3_uri = f"s3://{bucket}/{key}"
-#     template_url = f"https://s3.amazonaws.com/{bucket}/{key}"
-#     if verbose: # pragma: no cover
-#         print(f"  upload template to {s3_uri} ...")
-#         console_url = get_s3_console_url(bucket=bucket, prefix=key)
-#         print(f"    preview at {console_url}")
-#     s3_client.put_object(
-#         Bucket=bucket,
-#         Key=key,
-#         Body=template,
-#     )
-#     return template_url
-
-
 def create_stack(
     bsm: BotoSesManager,
     stack_name: str,
@@ -282,10 +217,6 @@ def update_stack(
     response = bsm.cloudformation_client.update_stack(**resolve_kwargs(**kwargs))
     stack_id = response["StackId"]
     return stack_id
-
-
-def change_set_name_suffix() -> str:
-    return datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S-%f")[:-3]
 
 
 def create_change_set(
@@ -532,7 +463,7 @@ def wait_delete_stack_to_finish(
     or timeout.
 
     :param bsm: ``boto_session_manager.BotoSesManager`` object
-    :param stack_id: the unique stack id
+    :param stack_id: the unique stack id, you cannot use stack_name here
     :param delays: how long it waits (in seconds) between two "get status" api call
     :param timeout: how long it will raise timeout error
     :param verbose: whether you want to log information to console
@@ -547,16 +478,21 @@ def wait_delete_stack_to_finish(
         indent=4,
         verbose=verbose,
     ):
-        stack = describe_live_stack(bsm, stack_id)
-        if stack is None:
+        stacks = describe_stacks(bsm, name=stack_id).all()
+        if len(stacks) == 0:
             if verbose:  # pragma: no cover
-                print(f"\n    already deleted.")
+                print(f"\n    🟢 already deleted.")
             return
         else:
+            stack = stacks[0]
             if stack.is_stopped():
                 if verbose:  # pragma: no cover
+                    if stack.is_success():
+                        icon = "🟢"
+                    else:
+                        icon = "🔴"
                     print(
-                        f"\n    reached status {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
+                        f"\n    reached status {icon} {Fore.CYAN}{stack.status.value}{Style.RESET_ALL}"
                     )
             return
 

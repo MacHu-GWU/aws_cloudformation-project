@@ -24,60 +24,6 @@ from ..stack import (
     ChangeSet,
 )
 
-# def resolve_template_in_kwargs(
-#     kwargs: dict,
-#     bsm: BotoSesManager,
-#     template: T.Optional[str],
-#     bucket: T.Optional[str] = None,
-#     prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-#     verbose: bool = True,
-# ):
-#     if template.startswith("s3://"):
-#         kwargs["TemplateURL"] = template
-#
-#     if bucket is not None:
-#         template_url = upload_template_to_s3(
-#             bsm,
-#             template,
-#             bucket=bucket,
-#             prefix=prefix,
-#             verbose=verbose,
-#         )
-#         kwargs["TemplateURL"] = template_url
-#     elif sys.getsizeof(template) > TEMPLATE_BODY_SIZE_LIMIT:
-#         raise ValueError(
-#             f"Template size is larger than {TEMPLATE_BODY_SIZE_LIMIT}B, "
-#             "You have to upload to s3 bucket first!"
-#         )
-#     else:
-#         kwargs["TemplateBody"] = template
-
-
-# def resolve_stack_policy(
-#     kwargs: dict,
-#     bsm: BotoSesManager,
-#     stack_policy: str,
-#     bucket: str,
-#     prefix: T.Optional[str] = None,
-#     verbose: bool = True,
-# ):
-#     if bucket is not None:
-#         policy_url = upload_template_to_s3(
-#             bsm,
-#             stack_policy,
-#             bucket=bucket,
-#             prefix=prefix,
-#             verbose=verbose,
-#         )
-#         kwargs["StackPolicyURL"] = policy_url
-#     elif sys.getsizeof(stack_policy) > STACK_POLICY_SIZE_LIMIT:
-#         raise ValueError(
-#             f"Stack policy size is larger than {STACK_POLICY_SIZE_LIMIT}B, "
-#             "You have to upload to s3 bucket first!"
-#         )
-#     else:
-#         kwargs["StackPolicyBody"] = stack_policy
-
 
 def resolve_capabilities_kwargs(
     kwargs: dict,

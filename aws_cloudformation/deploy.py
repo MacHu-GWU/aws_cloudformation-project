@@ -5,33 +5,23 @@ Implement the fancy deployment and remove API with "terraform plan" liked featur
 """
 
 import typing as T
+from datetime import datetime
 
 from boto_session_manager import BotoSesManager
 from aws_console_url import AWSConsole
 from colorama import Fore, Style
 from func_args import NOTHING, resolve_kwargs
 
-from . import exc
-from . import better_boto
-from .better_boto import (
-    DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    DEFAULT_UPDATE_DELAYS,
-    DEFAULT_UPDATE_TIMEOUT,
-    DEFAULT_CHANGE_SET_DELAYS,
-    DEFAULT_CHANGE_SET_TIMEOUT,
-    describe_live_stack,
-    create_stack,
-    update_stack,
-    create_change_set,
-    execute_change_set,
-    delete_stack,
-    wait_create_or_update_stack_to_finish,
-    wait_delete_stack_to_finish,
-    wait_create_change_set_to_finish,
+from . import (
+    exc,
+    better_boto,
+    helper,
 )
 from .stack import (
     Parameter,
+    Stack,
+    Output,
+    ChangeSet,
     StackStatusEnum,
     ChangeSetTypeEnum,
 )
@@ -40,11 +30,26 @@ from .stack_set import (
     StackSetCallAsEnum,
 )
 from .console import (
+    get_s3_console_url,
     get_stacks_view_console_url,
     get_stack_details_console_url,
     get_change_set_console_url,
 )
-from .change_set_visualizer import print_header, ChangeSet, visualize_change_set
+from .change_set_visualizer import (
+    print_header,
+    visualize_change_set,
+)
+from .deploy_helpers import (
+    DEFAULT_S3_PREFIX_FOR_TEMPLATE,
+    DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
+    resolve_template_kwargs,
+    resolve_stack_policy_kwargs,
+)
+
+DEFAULT_CHANGE_SET_DELAYS = 5
+DEFAULT_CHANGE_SET_TIMEOUT = 60
+DEFAULT_UPDATE_DELAYS = 5
+DEFAULT_UPDATE_TIMEOUT = 60
 
 
 def prompt_to_proceed() -> bool:
@@ -60,29 +65,34 @@ def prompt_to_proceed() -> bool:
 def _deploy_stack_without_change_set(
     bsm: "BotoSesManager",
     stack_name: str,
-    template: T.Optional[str],
-    use_previous_template: T.Optional[bool] = None,
+    template: T.Optional[str] = NOTHING,
+    use_previous_template: T.Optional[bool] = NOTHING,
     bucket: T.Optional[str] = None,
     prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    execution_role_arn: T.Optional[str] = None,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
+    execution_role_arn: T.Optional[str] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
-    stack_policy: T.Optional[str] = None,
+    stack_policy: T.Optional[str] = NOTHING,
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    resource_types: T.Optional[T.List[str]] = None,
-    client_request_token: T.Optional[str] = None,
-    enable_termination_protection: T.Optional[bool] = None,
-    disable_rollback: T.Optional[bool] = None,
+    resource_types: T.Optional[T.List[str]] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
+    enable_termination_protection: T.Optional[bool] = NOTHING,
+    disable_rollback: T.Optional[bool] = NOTHING,
+    rollback_configuration: T.Optional[dict] = NOTHING,
+    notification_arns: T.Optional[T.List[str]] = NOTHING,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
     skip_prompt: bool = False,
     verbose: bool = True,
 ):
-    stack = describe_live_stack(bsm, stack_name)
+    stack = better_boto.describe_live_stack(
+        bsm=bsm,
+        name=stack_name,
+    )
 
     # doesn't exist, do create
     if stack is None:
@@ -90,37 +100,51 @@ def _deploy_stack_without_change_set(
             if prompt_to_proceed() is False:
                 print("Do nothing.")
                 return
-
-        stack_id = create_stack(
+        kwargs = dict(
             bsm=bsm,
             stack_name=stack_name,
-            template=template,
-            bucket=bucket,
-            prefix=prefix,
             parameters=parameters,
             tags=tags,
             execution_role_arn=execution_role_arn,
             include_iam=include_iam,
             include_named_iam=include_named_iam,
             include_macro=include_macro,
-            stack_policy=stack_policy,
-            prefix_stack_policy=prefix_stack_policy,
             resource_types=resource_types,
             client_request_token=client_request_token,
             enable_termination_protection=enable_termination_protection,
+            disable_rollback=disable_rollback,
+            rollback_configuration=rollback_configuration,
+            notification_arns=notification_arns,
             verbose=verbose,
         )
+        resolve_template_kwargs(
+            kwargs=kwargs,
+            bsm=bsm,
+            template=template,
+            bucket=bucket,
+            prefix=prefix,
+            verbose=verbose,
+        )
+        resolve_stack_policy_kwargs(
+            kwargs=kwargs,
+            bsm=bsm,
+            stack_policy=stack_policy,
+            bucket=bucket,
+            prefix=prefix_stack_policy,
+            verbose=verbose,
+        )
+        stack_id = better_boto.create_stack(**resolve_kwargs(**kwargs))
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack_id)
             print(
-                f"  preview {Fore.CYAN}create stack progress{Style.RESET_ALL} at: {console_url}"
+                f"  📋 preview {Fore.CYAN}create stack progress{Style.RESET_ALL} at: {console_url}"
             )
     # already exists, do update
     else:
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack.id)
             print(
-                f"  preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}"
+                f"  📋 preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}"
             )
 
         if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
@@ -137,26 +161,40 @@ def _deploy_stack_without_change_set(
                 return
 
         try:
-            stack_id = update_stack(
+            kwargs = dict(
                 bsm=bsm,
                 stack_name=stack_name,
-                template=template,
                 use_previous_template=use_previous_template,
-                bucket=bucket,
-                prefix=prefix,
                 parameters=parameters,
                 tags=tags,
                 execution_role_arn=execution_role_arn,
                 include_iam=include_iam,
                 include_named_iam=include_named_iam,
                 include_macro=include_macro,
-                stack_policy=stack_policy,
-                prefix_stack_policy=prefix_stack_policy,
                 resource_types=resource_types,
                 client_request_token=client_request_token,
                 disable_rollback=disable_rollback,
+                rollback_configuration=rollback_configuration,
+                notification_arns=notification_arns,
                 verbose=verbose,
             )
+            resolve_template_kwargs(
+                kwargs=kwargs,
+                bsm=bsm,
+                template=template,
+                bucket=bucket,
+                prefix=prefix,
+                verbose=verbose,
+            )
+            resolve_stack_policy_kwargs(
+                kwargs=kwargs,
+                bsm=bsm,
+                stack_policy=stack_policy,
+                bucket=bucket,
+                prefix=prefix_stack_policy,
+                verbose=verbose,
+            )
+            stack_id = better_boto.update_stack(**resolve_kwargs(**kwargs))
         except Exception as e:
             if "No updates are to be performed" in str(e):
                 if verbose:
@@ -167,7 +205,7 @@ def _deploy_stack_without_change_set(
 
     # wait until the stack is finished
     if wait:
-        wait_create_or_update_stack_to_finish(
+        better_boto.wait_create_or_update_stack_to_finish(
             bsm=bsm,
             stack_name=stack_id,
             delays=delays,
@@ -176,24 +214,30 @@ def _deploy_stack_without_change_set(
         )
 
 
+def change_set_name_suffix() -> str:
+    return datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S-%f")[:-3]
+
+
 def _deploy_stack_using_change_set(
     bsm: "BotoSesManager",
     stack_name: str,
-    template: T.Optional[str],
-    use_previous_template: T.Optional[bool] = None,
-    bucket: T.Optional[str] = None,
+    template: T.Optional[str] = NOTHING,
+    use_previous_template: T.Optional[bool] = NOTHING,
+    bucket: T.Optional[str] = NOTHING,
     prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    execution_role_arn: T.Optional[str] = None,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
+    execution_role_arn: T.Optional[str] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
-    stack_policy: T.Optional[str] = None,
+    stack_policy: T.Optional[str] = NOTHING,
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    resource_types: T.Optional[T.List[str]] = None,
-    client_request_token: T.Optional[str] = None,
-    disable_rollback: T.Optional[bool] = None,
+    resource_types: T.Optional[T.List[str]] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
+    disable_rollback: T.Optional[bool] = NOTHING,
+    rollback_configuration: T.Optional[dict] = NOTHING,
+    notification_arns: T.Optional[T.List[str]] = NOTHING,
     plan_nested_stack: bool = True,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
@@ -203,34 +247,47 @@ def _deploy_stack_using_change_set(
     skip_prompt: bool = False,
     verbose: bool = True,
 ):
-    stack = describe_live_stack(bsm, stack_name)
-
+    stack = better_boto.describe_live_stack(bsm, stack_name)
+    change_set_name = f"{stack_name}-{change_set_name_suffix()}"
     create_change_set_kwargs = dict(
         bsm=bsm,
         stack_name=stack_name,
-        template=template,
+        change_set_name=change_set_name,
         use_previous_template=use_previous_template,
-        bucket=bucket,
-        prefix=prefix,
         parameters=parameters,
         tags=tags,
         execution_role_arn=execution_role_arn,
         include_iam=include_iam,
         include_named_iam=include_named_iam,
         include_macro=include_macro,
-        stack_policy=stack_policy,
-        prefix_stack_policy=prefix_stack_policy,
         resource_types=resource_types,
-        change_set_type=ChangeSetTypeEnum.CREATE.value,
+        rollback_configuration=rollback_configuration,
+        notification_arns=notification_arns,
         client_request_token=client_request_token,
         include_nested_stack=plan_nested_stack,
+        verbose=verbose,
+    )
+    resolve_template_kwargs(
+        kwargs=create_change_set_kwargs,
+        bsm=bsm,
+        template=template,
+        bucket=bucket,
+        prefix=prefix,
+        verbose=verbose,
+    )
+    resolve_stack_policy_kwargs(
+        kwargs=create_change_set_kwargs,
+        bsm=bsm,
+        stack_policy=stack_policy,
+        bucket=bucket,
+        prefix=prefix_stack_policy,
         verbose=verbose,
     )
 
     # doesn't exist, do create
     if stack is None:
         action = "create"
-        create_change_set_kwargs["change_set_type"] = ChangeSetTypeEnum.CREATE.value
+        create_change_set_kwargs["change_set_type_is_create"] = True
     # already exist, do update
     else:
         if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:
@@ -242,10 +299,10 @@ def _deploy_stack_using_change_set(
             )
 
         action = "update"
-        create_change_set_kwargs["change_set_type"] = ChangeSetTypeEnum.UPDATE.value
+        create_change_set_kwargs["change_set_type_is_update"] = True
 
-    stack_id, change_set_id, change_set_name = create_change_set(
-        **create_change_set_kwargs
+    stack_id, change_set_id = better_boto.create_change_set(
+        **resolve_kwargs(**create_change_set_kwargs)
     )
 
     if verbose:
@@ -254,11 +311,11 @@ def _deploy_stack_using_change_set(
             change_set_id=change_set_id,
         )
         print(
-            f"  preview {Fore.CYAN}change set details{Style.RESET_ALL} at: {console_url}"
+            f"  🔎 preview {Fore.CYAN}change set details{Style.RESET_ALL} at: {console_url}"
         )
 
     try:
-        response = wait_create_change_set_to_finish(
+        change_set = better_boto.wait_create_change_set_to_finish(
             bsm=bsm,
             stack_name=stack_name,
             change_set_id=change_set_id,
@@ -268,7 +325,7 @@ def _deploy_stack_using_change_set(
         )
         if verbose:
             visualize_change_set(
-                change_set=ChangeSet.from_dict(response),
+                change_set=change_set,
                 bsm=bsm,
                 include_nested_stack=plan_nested_stack,
             )
@@ -289,7 +346,7 @@ def _deploy_stack_using_change_set(
             # create logic branch
             if stack is None:
                 print("  cancel creation.")
-                delete_stack(
+                better_boto.delete_stack(
                     bsm=bsm,
                     stack_name=stack_id,
                 )
@@ -300,10 +357,10 @@ def _deploy_stack_using_change_set(
     if verbose:
         console_url = get_stack_details_console_url(stack_id=stack_id)
         print(
-            f"  preview {Fore.CYAN}{action} stack progress{Style.RESET_ALL} at: {console_url}"
+            f"  📋 preview {Fore.CYAN}{action} stack progress{Style.RESET_ALL} at: {console_url}"
         )
 
-    response = execute_change_set(
+    better_boto.execute_change_set(
         bsm=bsm,
         change_set_name=change_set_name,
         stack_name=stack_name,
@@ -312,7 +369,7 @@ def _deploy_stack_using_change_set(
 
     # wait until the stack is finished
     if wait:
-        wait_create_or_update_stack_to_finish(
+        better_boto.wait_create_or_update_stack_to_finish(
             bsm=bsm,
             stack_name=stack_id,
             delays=delays,
@@ -324,22 +381,24 @@ def _deploy_stack_using_change_set(
 def deploy_stack(
     bsm: "BotoSesManager",
     stack_name: str,
-    template: T.Optional[str],
-    use_previous_template: T.Optional[bool] = None,
-    bucket: T.Optional[str] = None,
+    template: T.Optional[str] = NOTHING,
+    use_previous_template: T.Optional[bool] = NOTHING,
+    bucket: T.Optional[str] = NOTHING,
     prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
-    parameters: T.List[Parameter] = None,
-    tags: dict = None,
-    execution_role_arn: T.Optional[str] = None,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
+    execution_role_arn: T.Optional[str] = NOTHING,
     include_iam: bool = False,
     include_named_iam: bool = False,
     include_macro: bool = False,
-    stack_policy: T.Optional[str] = None,
+    stack_policy: T.Optional[str] = NOTHING,
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
-    resource_types: T.Optional[T.List[str]] = None,
-    client_request_token: T.Optional[str] = None,
-    enable_termination_protection: T.Optional[bool] = None,
-    disable_rollback: T.Optional[bool] = None,
+    resource_types: T.Optional[T.List[str]] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
+    enable_termination_protection: T.Optional[bool] = NOTHING,
+    disable_rollback: T.Optional[bool] = NOTHING,
+    rollback_configuration: T.Optional[dict] = NOTHING,
+    notification_arns: T.Optional[T.List[str]] = NOTHING,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
@@ -380,7 +439,9 @@ def deploy_stack(
     :param resource_types: see "Update Stack Boto3 API" link
     :param client_request_token: see "Update Stack Boto3 API" link
     :param enable_termination_protection: see "Create Stack Boto3 API" link
-    :param disable_rollback: see "Update Stack Boto3 API" link
+    :param disable_rollback: see "Create Stack Boto3 API" link
+    :param rollback_configuration: see "Create Stack Boto3 API" link
+    :param notification_arns: see "Create Stack Boto3 API" link
     :param wait: default True; if True, then wait the create / update action
         to success or fail; if False, then it is an async call and return immediately;
         note that if you have skip_plan is False (using change set), you always
@@ -403,12 +464,12 @@ def deploy_stack(
     """
     if verbose:
         print_header(
-            f"{Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
+            f"🚀 {Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
             "=",
             80,
         )
         console_url = get_stacks_view_console_url(stack_name=stack_name)
-        print(f"  preview stack in AWS CloudFormation console: {console_url}")
+        print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
 
     if skip_plan is True:
         _deploy_stack_without_change_set(
@@ -430,6 +491,8 @@ def deploy_stack(
             client_request_token=client_request_token,
             enable_termination_protection=enable_termination_protection,
             disable_rollback=disable_rollback,
+            rollback_configuration=rollback_configuration,
+            notification_arns=notification_arns,
             wait=wait,
             delays=delays,
             timeout=timeout,
@@ -471,10 +534,10 @@ def deploy_stack(
 
 def remove_stack(
     bsm: "BotoSesManager",
-    stack_name: str = None,
-    retain_resources: T.Optional[T.List[str]] = None,
-    role_arn: T.Optional[bool] = None,
-    client_request_token: T.Optional[str] = None,
+    stack_name: str,
+    retain_resources: T.Optional[T.List[str]] = NOTHING,
+    role_arn: T.Optional[str] = NOTHING,
+    client_request_token: T.Optional[str] = NOTHING,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
@@ -507,16 +570,16 @@ def remove_stack(
     .. versionadded:: 0.1.1
     """
     print_header(
-        f"{Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
+        f"🗑 {Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
         "=",
         80,
     )
 
     if verbose:
         console_url = get_stacks_view_console_url(stack_name)
-        print(f"  preview stack in AWS CloudFormation console: {console_url}")
+        print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
 
-    stack = describe_live_stack(bsm, stack_name)
+    stack = better_boto.describe_live_stack(bsm, stack_name)
 
     if stack is None:
         print("  stack doesn't exists!")
@@ -528,7 +591,7 @@ def remove_stack(
             print("Do nothing.")
             return
 
-    delete_stack(
+    better_boto.delete_stack(
         bsm=bsm,
         stack_name=stack_name,
         retain_resources=retain_resources,
@@ -537,7 +600,7 @@ def remove_stack(
     )
 
     if wait:
-        wait_delete_stack_to_finish(
+        better_boto.wait_delete_stack_to_finish(
             bsm=bsm,
             stack_id=stack.id,
             delays=delays,
