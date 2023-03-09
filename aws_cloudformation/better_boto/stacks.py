@@ -5,7 +5,6 @@ AWS CloudFormation Stack related operations.
 """
 
 import typing as T
-from datetime import datetime
 
 from boto_session_manager import BotoSesManager, AwsServiceEnum
 from iterproxy import IterProxy

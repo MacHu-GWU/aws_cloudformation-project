@@ -15,7 +15,7 @@ from aws_cloudformation.tests.stacks.iam_stack import (
 )
 
 
-def test_with_change_set():
+def _test_with_change_set():
     # ----------------------------------------------------------------------
     # prepare some variables
     # ----------------------------------------------------------------------
@@ -29,10 +29,6 @@ def test_with_change_set():
             value=project_name,
         )
     ]
-    tpl1 = make_tpl_1()
-    tpl2 = make_tpl_2()
-    tpl3 = make_tpl_3()
-    tpl4 = make_tpl_4()
 
     bsm.s3_client.create_bucket(Bucket=bucket)
     env = cf.Env(bsm=bsm)
@@ -116,7 +112,7 @@ def test_with_change_set():
     # delete_it()
 
 
-def test_without_change_set():
+def _test_without_change_set():
     # ----------------------------------------------------------------------
     # prepare some variables
     # ----------------------------------------------------------------------
@@ -217,9 +213,14 @@ def test_without_change_set():
     # deployment_3()
     # deployment_4()
     # delete_it()
+
+
+def test():
+    _test_with_change_set()
+    _test_without_change_set()
 
 
 if __name__ == "__main__":
     from aws_cloudformation.tests import run_cov_test
 
-    run_cov_test(__file__, "aws_cloudformation.deploy", preview=False)
+    run_cov_test(__file__, "aws_cloudformation.deploy", preview=True)

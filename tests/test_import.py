@@ -38,6 +38,9 @@ def test():
     _ = aws_cloudformation.ResourceChange
     _ = aws_cloudformation.visualize_change_set
 
+    _ = aws_cloudformation.to_tag_dict
+    _ = aws_cloudformation.to_tag_list
+
 
 if __name__ == "__main__":
     import os

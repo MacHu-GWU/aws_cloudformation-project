@@ -49,5 +49,9 @@ try:
         ResourceChange,
         visualize_change_set,
     )
+    from .taggings import (
+        to_tag_list,
+        to_tag_dict,
+    )
 except ImportError as e:  # pragma: no cover
     pass
