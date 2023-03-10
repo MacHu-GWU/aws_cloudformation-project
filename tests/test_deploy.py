@@ -40,6 +40,7 @@ class Test(BaseTest):
             remove_stack(
                 bsm=self.bsm,
                 stack_name=stack_name,
+                delays=0.1,
                 skip_prompt=True,
             )
 
@@ -51,6 +52,7 @@ class Test(BaseTest):
                 bucket=bucket,
                 template=make_tpl_1().to_json(),
                 parameters=params,
+                delays=0.1,
                 skip_plan=True,
                 skip_prompt=True,
                 include_named_iam=True,
@@ -64,6 +66,8 @@ class Test(BaseTest):
                 bucket=bucket,
                 template=make_tpl_2().to_json(),
                 parameters=params,
+                delays=0.1,
+                change_set_delays=0.1,
                 skip_prompt=True,
                 include_named_iam=True,
             )
@@ -76,6 +80,7 @@ class Test(BaseTest):
                 bucket=bucket,
                 template=make_tpl_3().to_json(),
                 parameters=params,
+                delays=0.1,
                 skip_plan=True,
                 skip_prompt=True,
                 include_named_iam=True,
@@ -94,6 +99,8 @@ class Test(BaseTest):
                 bucket=bucket,
                 template=tpl.to_json(),
                 parameters=params,
+                delays=0.1,
+                change_set_delays=0.1,
                 skip_prompt=True,
                 include_named_iam=True,
                 plan_nested_stack=True,
