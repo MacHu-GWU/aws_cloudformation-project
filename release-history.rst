@@ -8,11 +8,27 @@ Backlog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
-- Add "StackSet" support
-
 **Minor Improvements**
 
 **Bugfixes**
+
+**Miscellaneous**
+
+
+1.3.1 (2022-03-10)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features and Improvements**
+
+- Add "StackSet" support, add :func:`~aws_cloudformation.deploy.remove_stack_set` and :func:`~aws_cloudformation.deploy.deploy_stack_set`.
+- now ``deploy_stack`` and ``remove_stack`` supports full list of boto3 arguments.
+
+**Minor Improvements**
+
+- use sentinel ``NOTHING`` to avoid ambiguity of ``None``.
+
+**Bugfixes**
+
+- fix a bug that waiter didn't raise exception when ``deploy_stack`` or ``remove_stack`` fail.
 
 **Miscellaneous**
 

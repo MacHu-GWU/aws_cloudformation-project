@@ -5,10 +5,8 @@ Implement the fancy deployment and remove API with "terraform plan" liked featur
 """
 
 import typing as T
-import dataclasses
 from datetime import datetime
 
-import aws_console_url
 from boto_session_manager import BotoSesManager
 from aws_console_url import AWSConsole
 from colorama import Fore, Style
@@ -485,6 +483,7 @@ def deploy_stack(
         the stack will take some time to reach stopped status after it failed,
         you may not to run another deploy immediately. if True, it will raise
         the exception after the stack reaching ``stopped`` status.
+    :param plan_nested_stack: do you want to plan change set for nested stack?
     :param skip_plan: default False; if False, force to use change set to
         create / update; if True, then do create / update without change set.
     :param skip_prompt: default False; if False, you have to enter "Yes"
