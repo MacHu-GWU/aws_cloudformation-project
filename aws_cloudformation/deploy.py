@@ -15,22 +15,12 @@ from func_args import NOTHING, resolve_kwargs
 from . import (
     exc,
     better_boto,
-    helper,
 )
 from .stack import (
     Parameter,
-    Stack,
-    Output,
-    ChangeSet,
     StackStatusEnum,
-    ChangeSetTypeEnum,
-)
-from .stack_set import (
-    StackSetPermissionModelEnum,
-    StackSetCallAsEnum,
 )
 from .console import (
-    get_s3_console_url,
     get_stacks_view_console_url,
     get_stack_details_console_url,
     get_change_set_console_url,
@@ -72,9 +62,9 @@ def _deploy_stack_without_change_set(
     parameters: T.Optional[T.List[Parameter]] = NOTHING,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
     execution_role_arn: T.Optional[str] = NOTHING,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
+    include_iam: T.Optional[bool] = NOTHING,
+    include_named_iam: T.Optional[bool] = NOTHING,
+    include_macro: T.Optional[bool] = NOTHING,
     stack_policy: T.Optional[str] = NOTHING,
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     resource_types: T.Optional[T.List[str]] = NOTHING,
@@ -83,9 +73,9 @@ def _deploy_stack_without_change_set(
     disable_rollback: T.Optional[bool] = NOTHING,
     rollback_configuration: T.Optional[dict] = NOTHING,
     notification_arns: T.Optional[T.List[str]] = NOTHING,
-    on_failure_do_nothing: T.Optional[bool] = False,
-    on_failure_rollback: T.Optional[bool] = False,
-    on_failure_delete: T.Optional[bool] = False,
+    on_failure_do_nothing: T.Optional[bool] = NOTHING,
+    on_failure_rollback: T.Optional[bool] = NOTHING,
+    on_failure_delete: T.Optional[bool] = NOTHING,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
@@ -239,9 +229,9 @@ def _deploy_stack_using_change_set(
     parameters: T.Optional[T.List[Parameter]] = NOTHING,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
     execution_role_arn: T.Optional[str] = NOTHING,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
+    include_iam: T.Optional[bool] = NOTHING,
+    include_named_iam: T.Optional[bool] = NOTHING,
+    include_macro: T.Optional[bool] = NOTHING,
     stack_policy: T.Optional[str] = NOTHING,
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     resource_types: T.Optional[T.List[str]] = NOTHING,
@@ -411,9 +401,9 @@ def deploy_stack(
     parameters: T.Optional[T.List[Parameter]] = NOTHING,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
     execution_role_arn: T.Optional[str] = NOTHING,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
+    include_iam: T.Optional[bool] = NOTHING,
+    include_named_iam: T.Optional[bool] = NOTHING,
+    include_macro: T.Optional[bool] = NOTHING,
     stack_policy: T.Optional[str] = NOTHING,
     prefix_stack_policy: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     resource_types: T.Optional[T.List[str]] = NOTHING,
@@ -422,9 +412,9 @@ def deploy_stack(
     disable_rollback: T.Optional[bool] = NOTHING,
     rollback_configuration: T.Optional[dict] = NOTHING,
     notification_arns: T.Optional[T.List[str]] = NOTHING,
-    on_failure_do_nothing: T.Optional[bool] = False,
-    on_failure_rollback: T.Optional[bool] = False,
-    on_failure_delete: T.Optional[bool] = False,
+    on_failure_do_nothing: T.Optional[bool] = NOTHING,
+    on_failure_rollback: T.Optional[bool] = NOTHING,
+    on_failure_delete: T.Optional[bool] = NOTHING,
     wait: bool = True,
     delays: T.Union[int, float] = DEFAULT_UPDATE_DELAYS,
     timeout: T.Union[int, float] = DEFAULT_UPDATE_TIMEOUT,
@@ -672,9 +662,10 @@ def deploy_stack_set(
     bsm: "BotoSesManager",
     stack_set_name: str,
     description: T.Optional[str] = NOTHING,
-    template_body: T.Optional[str] = NOTHING,
-    template_url: T.Optional[str] = NOTHING,
+    template: T.Optional[str] = NOTHING,
     use_previous_template: T.Optional[bool] = NOTHING,
+    bucket: T.Optional[str] = NOTHING,
+    prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
     stack_id: T.Optional[str] = NOTHING,
     parameters: T.List[Parameter] = NOTHING,
     include_iam: bool = False,
@@ -721,12 +712,10 @@ def deploy_stack_set(
     if stack_set is None:
         if verbose:
             print(f"  {Fore.CYAN}+{Style.RESET_ALL} create stack set ...")
-        better_boto.create_stack_set(
+        kwargs = dict(
             bsm=bsm,
             stack_set_name=stack_set_name,
             description=description,
-            template_body=template_body,
-            template_url=template_url,
             stack_id=stack_id,
             parameters=parameters,
             include_iam=include_iam,
@@ -745,15 +734,22 @@ def deploy_stack_set(
             managed_execution_active=managed_execution_active,
             verbose=verbose,
         )
+        resolve_template_kwargs(
+            kwargs=kwargs,
+            bsm=bsm,
+            template=template,
+            bucket=bucket,
+            prefix=prefix,
+            verbose=verbose,
+        )
+        better_boto.create_stack_set(**resolve_kwargs(**kwargs))
     else:
         if verbose:
             print(f"  {Fore.CYAN}+/-{Style.RESET_ALL} update stack set ...")
-        better_boto.update_stack_set(
+        kwargs = dict(
             bsm=bsm,
             stack_set_name=stack_set_name,
             description=description,
-            template_body=template_body,
-            template_url=template_url,
             use_previous_template=use_previous_template,
             parameters=parameters,
             tags=tags,
@@ -776,6 +772,15 @@ def deploy_stack_set(
             managed_execution_active=managed_execution_active,
             verbose=verbose,
         )
+        resolve_template_kwargs(
+            kwargs=kwargs,
+            bsm=bsm,
+            template=template,
+            bucket=bucket,
+            prefix=prefix,
+            verbose=verbose,
+        )
+        better_boto.update_stack_set(**resolve_kwargs(**kwargs))
 
     if verbose:
         print("  done")
