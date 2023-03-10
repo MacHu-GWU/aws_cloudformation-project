@@ -438,11 +438,11 @@ def _test_deploy_stack_set_happy_path():
 def test():
     print("")
     with DateTimeTimer():
-        # _test_deploy_happy_path(with_change_set=False)
-        # _test_deploy_happy_path(with_change_set=True)
-        #
-        # _test_creation_failed_with_change_set()
-        # _test_creation_failed_without_change_set()
+        _test_deploy_happy_path(with_change_set=False)
+        _test_deploy_happy_path(with_change_set=True)
+
+        _test_creation_failed_with_change_set()
+        _test_creation_failed_without_change_set()
 
         _test_deploy_stack_set_happy_path()
 
