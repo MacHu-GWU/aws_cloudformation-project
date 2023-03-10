@@ -11,6 +11,7 @@ def test():
     _ = aws_cloudformation.deploy_stack
     _ = aws_cloudformation.remove_stack
     _ = aws_cloudformation.deploy_stack_set
+    _ = aws_cloudformation.remove_stack_set
 
     _ = aws_cloudformation.StackStatusEnum
     _ = aws_cloudformation.Output

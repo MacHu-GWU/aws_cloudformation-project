@@ -5,8 +5,10 @@ Implement the fancy deployment and remove API with "terraform plan" liked featur
 """
 
 import typing as T
+import dataclasses
 from datetime import datetime
 
+import aws_console_url
 from boto_session_manager import BotoSesManager
 from aws_console_url import AWSConsole
 from colorama import Fore, Style
@@ -34,6 +36,7 @@ from .deploy_helpers import (
     DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     resolve_template_kwargs,
     resolve_stack_policy_kwargs,
+    get_filter_stack_set_console_url,
 )
 
 DEFAULT_CHANGE_SET_DELAYS = 5
@@ -382,10 +385,13 @@ def _deploy_stack_using_change_set(
         )
 
 
-def _find_ruler_length(stack_name: str) -> int:
-    if len(stack_name) <= 36:
+def _find_ruler_length(
+    name: str,
+    padding_length: int,
+) -> int:
+    if len(name) <= (80 - padding_length):
         return 80
-    elif len(stack_name) <= 76:
+    elif len(name) <= (120 - padding_length):
         return 120
     else:  # pragma: no cover
         return 172
@@ -493,7 +499,7 @@ def deploy_stack(
     .. versionadded:: 0.1.1
     """
     if verbose:
-        length = _find_ruler_length(stack_name)
+        length = _find_ruler_length(stack_name, 48)
         print_header(
             f"🚀 {Fore.CYAN}Deploy{Style.RESET_ALL} stack: {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
             "=",
@@ -612,9 +618,8 @@ def remove_stack(
 
     .. versionadded:: 0.1.1
     """
-
     if verbose:
-        length = _find_ruler_length(stack_name)
+        length = _find_ruler_length(stack_name, 48)
         print_header(
             f"🗑 {Fore.CYAN}Remove{Style.RESET_ALL} stack {Fore.CYAN}{stack_name}{Style.RESET_ALL}",
             "=",
@@ -688,20 +693,59 @@ def deploy_stack_set(
     client_request_token: T.Optional[str] = NOTHING,
     managed_execution_active: T.Optional[bool] = NOTHING,
     verbose: bool = True,
-):  # pragma: no cover
+) -> T.Tuple[bool, str]:  # pragma: no cover
+    """
+
+    :param bsm:
+    :param stack_set_name:
+    :param description:
+    :param template:
+    :param use_previous_template:
+    :param bucket:
+    :param prefix:
+    :param stack_id:
+    :param parameters:
+    :param include_iam:
+    :param include_named_iam:
+    :param include_macro:
+    :param tags:
+    :param operation_preferences:
+    :param admin_role_arn:
+    :param execution_role_name:
+    :param deployment_target:
+    :param permission_model_is_self_managed:
+    :param permission_model_is_service_managed:
+    :param auto_deployment_is_enabled:
+    :param auto_deployment_retain_stacks_on_account_removal:
+    :param operation_id:
+    :param accounts:
+    :param regions:
+    :param call_as_self:
+    :param call_as_delegated_admin:
+    :param client_request_token:
+    :param managed_execution_active:
+    :param verbose:
+
+    :return: (is_create, stack_set_id_or_operation_id)
+    """
     aws_console = AWSConsole(
-        aws_account_id=bsm.aws_account_id,
         aws_region=bsm.aws_region,
         bsm=bsm,
     )
     if verbose:
+        length = _find_ruler_length(stack_set_name, 52)
         print_header(
-            f"{Fore.CYAN}Deploy{Style.RESET_ALL} stack set: {Fore.CYAN}{stack_set_name}{Style.RESET_ALL}",
+            f"🚀 {Fore.CYAN}Deploy{Style.RESET_ALL} stack set: {Fore.CYAN}{stack_set_name}{Style.RESET_ALL}",
             "=",
-            80,
+            length,
         )
-        console_url = aws_console.cloudformation.filter_stack(stack_set_name)
-        print(f"  preview stack set in AWS CloudFormation console: {console_url}")
+        console_url = get_filter_stack_set_console_url(
+            aws_console=aws_console,
+            stack_set_name=stack_set_name,
+            call_as_self=call_as_self,
+            call_as_delegated_admin=call_as_delegated_admin,
+        )
+        print(f"  📋 preview stack set in AWS CloudFormation console: {console_url}")
 
     stack_set = better_boto.describe_stack_set(
         bsm=bsm,
@@ -710,6 +754,7 @@ def deploy_stack_set(
         call_as_delegated_admin=call_as_delegated_admin,
     )
     if stack_set is None:
+        is_create = True
         if verbose:
             print(f"  {Fore.CYAN}+{Style.RESET_ALL} create stack set ...")
         kwargs = dict(
@@ -742,8 +787,11 @@ def deploy_stack_set(
             prefix=prefix,
             verbose=verbose,
         )
-        better_boto.create_stack_set(**resolve_kwargs(**kwargs))
+        stack_set_id_or_operation_id = better_boto.create_stack_set(
+            **resolve_kwargs(**kwargs)
+        )
     else:
+        is_create = False
         if verbose:
             print(f"  {Fore.CYAN}+/-{Style.RESET_ALL} update stack set ...")
         kwargs = dict(
@@ -780,7 +828,56 @@ def deploy_stack_set(
             prefix=prefix,
             verbose=verbose,
         )
-        better_boto.update_stack_set(**resolve_kwargs(**kwargs))
+        stack_set_id_or_operation_id = better_boto.update_stack_set(
+            **resolve_kwargs(**kwargs)
+        )
+
+    if verbose:
+        print("  done")
+
+    return is_create, stack_set_id_or_operation_id
+
+
+def remove_stack_set(
+    bsm: BotoSesManager,
+    stack_set_name: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+    verbose: bool = True,
+):
+    """
+    Remove an AWS CloudFormation Stack.
+
+    :param bsm:
+    :param stack_set_name:
+    :param call_as_self:
+    :param call_as_delegated_admin:
+    :param verbose:
+    :return:
+    """
+    aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+    if verbose:
+        length = _find_ruler_length(stack_set_name, 52)
+        print_header(
+            f"🗑 {Fore.CYAN}Remove{Style.RESET_ALL} stack set {Fore.CYAN}{stack_set_name}{Style.RESET_ALL}",
+            "=",
+            length,
+        )
+        console_url = get_filter_stack_set_console_url(
+            aws_console=aws_console,
+            stack_set_name=stack_set_name,
+            call_as_self=call_as_self,
+            call_as_delegated_admin=call_as_delegated_admin,
+        )
+        print(f"  📋 preview stack set in AWS CloudFormation console: {console_url}")
+
+    better_boto.delete_stack_set(
+        bsm=bsm,
+        stack_set_name=stack_set_name,
+        call_as_self=call_as_self,
+        call_as_delegated_admin=call_as_delegated_admin,
+        verbose=verbose,
+    )
 
     if verbose:
         print("  done")

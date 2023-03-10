@@ -27,7 +27,6 @@ from aws_cloudformation.tests.stacks.iam_stack import (
 bucket = f"{bsm.aws_account_id}-{bsm.aws_region}-artifacts"
 
 
-
 # ------------------------------------------------------------------------------
 # Helper functions for tests
 # ------------------------------------------------------------------------------
@@ -50,7 +49,7 @@ def ensure_stack_exist_or_not(stack_name: str, exists: bool):
         assert stack is None
 
 
-def deployment(
+def deploy_stack(
     stack_name: str,
     template: str,
     params: T.List[aws_cf.Parameter],
@@ -69,6 +68,40 @@ def deployment(
         wait_until_exec_stopped_on_failure=wait_until_exec_stopped_on_failure,
         skip_plan=skip_plan,
         skip_prompt=True,
+    )
+
+
+def delete_stack_set(stack_set_name: str):
+    aws_cf.remove_stack_set(
+        bsm=bsm, stack_set_name=stack_set_name, call_as_delegated_admin=True,
+    )
+
+
+def ensure_stack_set_exist_or_not(stack_set_name: str, exists: bool):
+    stack_set = aws_cf.better_boto.describe_stack_set(
+        bsm=bsm,
+        name=stack_set_name,
+        call_as_delegated_admin=True,
+    )
+    if exists:
+        assert stack_set is not None
+    else:
+        assert stack_set is None
+
+
+def deploy_stack_set(
+    stack_set_name: str,
+    template: str,
+    params: T.List[aws_cf.Parameter],
+) -> T.Tuple[bool, str]:
+    return aws_cf.deploy_stack_set(
+        bsm=bsm,
+        stack_set_name=stack_set_name,
+        template=template,
+        parameters=params,
+        permission_model_is_service_managed=True,
+        auto_deployment_is_enabled=False,
+        call_as_delegated_admin=True,
     )
 
 
@@ -98,7 +131,7 @@ def _test_deploy_happy_path(
     ensure_stack_exist_or_not(stack_name, exists=False)
 
     def deployment_this(template: str):
-        deployment(
+        deploy_stack(
             stack_name,
             template=template,
             params=params,
@@ -168,7 +201,7 @@ def _test_creation_failed_with_change_set():
     # you cannot create / update it
     # ----------------------------------------------------------------------
     with pytest.raises(aws_cf.exc.DeployStackFailedError):
-        deployment(
+        deploy_stack(
             stack_name,
             template=malformed.tpl_0_malformed,
             params=params,
@@ -182,7 +215,7 @@ def _test_creation_failed_with_change_set():
     # the stack is still in ROLLBACK_COMPLETE you cannot create / update it
     # ----------------------------------------------------------------------
     with pytest.raises(Exception):
-        deployment(
+        deploy_stack(
             stack_name,
             template=malformed.tpl_1,
             params=params,
@@ -200,7 +233,7 @@ def _test_creation_failed_with_change_set():
     # ----------------------------------------------------------------------
     # then we can deploy a new stack, and it will succeed
     # ----------------------------------------------------------------------
-    deployment(
+    deploy_stack(
         stack_name,
         template=malformed.tpl_1,
         params=params,
@@ -214,7 +247,7 @@ def _test_creation_failed_with_change_set():
     # then we can deploy the same stack, and it will show some message
     # and succeed
     # ----------------------------------------------------------------------
-    deployment(
+    deploy_stack(
         stack_name,
         template=malformed.tpl_1,
         params=params,
@@ -229,7 +262,7 @@ def _test_creation_failed_with_change_set():
     # on_failure_delete is ignored since it is not a create
     # ----------------------------------------------------------------------
     with pytest.raises(aws_cf.exc.DeployStackFailedError):
-        deployment(
+        deploy_stack(
             stack_name,
             template=malformed.tpl_2_malformed,
             params=params,
@@ -265,7 +298,7 @@ def _test_creation_failed_without_change_set():
     # you cannot create / update it
     # ----------------------------------------------------------------------
     with pytest.raises(aws_cf.exc.DeployStackFailedError):
-        deployment(
+        deploy_stack(
             stack_name,
             template=malformed.tpl_0_malformed,
             params=params,
@@ -279,7 +312,7 @@ def _test_creation_failed_without_change_set():
     # the stack is still in ROLLBACK_COMPLETE you cannot create / update it
     # ----------------------------------------------------------------------
     with pytest.raises(Exception):
-        deployment(
+        deploy_stack(
             stack_name,
             template=malformed.tpl_1,
             params=params,
@@ -298,7 +331,7 @@ def _test_creation_failed_without_change_set():
     # create a new stack with ``on_failure_delete = True``
     # it will fail and automatically delete it, and it won't raise exception
     # ----------------------------------------------------------------------
-    deployment(
+    deploy_stack(
         stack_name,
         template=malformed.tpl_0_malformed,
         params=params,
@@ -311,7 +344,7 @@ def _test_creation_failed_without_change_set():
     # ----------------------------------------------------------------------
     # then we can deploy a new stack, and it will succeed
     # ----------------------------------------------------------------------
-    deployment(
+    deploy_stack(
         stack_name,
         template=malformed.tpl_1,
         params=params,
@@ -325,7 +358,7 @@ def _test_creation_failed_without_change_set():
     # then we can deploy the same stack, and it will show some message
     # and succeed
     # ----------------------------------------------------------------------
-    deployment(
+    deploy_stack(
         stack_name,
         template=malformed.tpl_1,
         params=params,
@@ -340,7 +373,7 @@ def _test_creation_failed_without_change_set():
     # on_failure_delete is ignored since it is not a create
     # ----------------------------------------------------------------------
     with pytest.raises(aws_cf.exc.DeployStackFailedError):
-        deployment(
+        deploy_stack(
             stack_name,
             template=malformed.tpl_2_malformed,
             params=params,
@@ -367,15 +400,39 @@ def _test_deploy_stack_set_happy_path():
         aws_cf.Parameter(key="ProjectName", value=project_name),
     ]
 
-    aws_cf.deploy_stack_set(
-        bsm=bsm,
-        stack_set_name=stack_set_name,
+    # ----------------------------------------------------------------------
+    # clean possible existing stack at begin
+    # ----------------------------------------------------------------------
+    delete_stack_set(stack_set_name)
+    ensure_stack_set_exist_or_not(stack_set_name, exists=False)
+
+    # ----------------------------------------------------------------------
+    # create a new stack set
+    # ----------------------------------------------------------------------
+    is_create, stack_set_id = deploy_stack_set(
+        stack_set_name,
         template=happy_path.tpl_1,
-        parameters=params,
-        permission_model_is_service_managed=True,
-        auto_deployment_is_enabled=False,
-        call_as_delegated_admin=True,
+        params=params,
     )
+    assert is_create is True
+    ensure_stack_set_exist_or_not(stack_set_name, exists=True)
+
+    # ----------------------------------------------------------------------
+    # update the stack set
+    # ----------------------------------------------------------------------
+    is_create, stack_set_id = deploy_stack_set(
+        stack_set_name,
+        template=happy_path.tpl_1,
+        params=params,
+    )
+    assert is_create is False
+    ensure_stack_set_exist_or_not(stack_set_name, exists=True)
+
+    # ----------------------------------------------------------------------
+    # clean stack at the end
+    # ----------------------------------------------------------------------
+    delete_stack_set(stack_set_name)
+    ensure_stack_set_exist_or_not(stack_set_name, exists=False)
 
 
 def test():

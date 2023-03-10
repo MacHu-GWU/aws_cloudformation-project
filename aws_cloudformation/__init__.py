@@ -20,6 +20,7 @@ try:
         deploy_stack,
         remove_stack,
         deploy_stack_set,
+        remove_stack_set,
     )
     from .stack import (
         StackStatusEnum,

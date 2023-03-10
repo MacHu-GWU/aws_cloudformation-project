@@ -5,6 +5,7 @@ import sys
 
 from boto_session_manager import BotoSesManager
 from func_args import NOTHING
+from aws_console_url import AWSConsole
 
 from .console import get_s3_console_url
 from .helper import md5_of_text
@@ -127,3 +128,17 @@ def resolve_stack_policy_kwargs(
         )
     else:
         kwargs["stack_policy_body"] = stack_policy
+
+
+def get_filter_stack_set_console_url(
+    aws_console: AWSConsole,
+    stack_set_name: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+) -> str:
+    if call_as_self is True:
+        return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
+    elif call_as_delegated_admin is True:
+        return aws_console.cloudformation.filter_service_managed_stack_set(stack_set_name)
+    else:
+        return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
