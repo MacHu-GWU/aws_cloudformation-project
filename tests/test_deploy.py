@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import pytest
-from rich import print as rprint
-
 import cottonformation as cf
 
 import aws_cloudformation as aws_cf
