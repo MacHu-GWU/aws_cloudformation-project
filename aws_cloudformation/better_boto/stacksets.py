@@ -27,8 +27,8 @@ from .stacksets_helpers import (
 def describe_stack_set(
     bsm: BotoSesManager,
     name: str,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
 ) -> T.Optional[StackSet]:
     """
     Ref:
@@ -60,17 +60,17 @@ def create_stack_set(
     stack_id: T.Optional[str] = NOTHING,
     parameters: T.Optional[T.List[Parameter]] = NOTHING,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
+    include_iam: T.Optional[bool] = NOTHING,
+    include_named_iam: T.Optional[bool] = NOTHING,
+    include_macro: T.Optional[bool] = NOTHING,
     admin_role_arn: T.Optional[str] = NOTHING,
     execution_role_name: T.Optional[str] = NOTHING,
-    permission_model_is_self_managed: bool = False,
-    permission_model_is_service_managed: bool = False,
+    permission_model_is_self_managed: T.Optional[bool] = NOTHING,
+    permission_model_is_service_managed: T.Optional[bool] = NOTHING,
     auto_deployment_is_enabled: T.Optional[bool] = NOTHING,
     auto_deployment_retain_stacks_on_account_removal: T.Optional[bool] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     client_request_token: T.Optional[str] = NOTHING,
     managed_execution_active: T.Optional[bool] = NOTHING,
     verbose: bool = True,
@@ -121,22 +121,22 @@ def update_stack_set(
     use_previous_template: T.Optional[bool] = NOTHING,
     parameters: T.Optional[T.List[Parameter]] = NOTHING,
     tags: T.Optional[T.Dict[str, str]] = NOTHING,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
+    include_iam: T.Optional[bool] = NOTHING,
+    include_named_iam: T.Optional[bool] = NOTHING,
+    include_macro: T.Optional[bool] = NOTHING,
     operation_preferences: T.Optional[dict] = NOTHING,
     admin_role_arn: T.Optional[str] = NOTHING,
     execution_role_name: T.Optional[str] = NOTHING,
     deployment_target: T.Optional[dict] = NOTHING,
-    permission_model_is_self_managed: bool = False,
-    permission_model_is_service_managed: bool = False,
+    permission_model_is_self_managed: T.Optional[bool] = NOTHING,
+    permission_model_is_service_managed: T.Optional[bool] = NOTHING,
     auto_deployment_is_enabled: T.Optional[bool] = NOTHING,
     auto_deployment_retain_stacks_on_account_removal: T.Optional[bool] = NOTHING,
     operation_id: T.Optional[str] = NOTHING,
     accounts: T.Optional[T.List[str]] = NOTHING,
     regions: T.Optional[T.List[str]] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     managed_execution_active: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ) -> str:
@@ -183,8 +183,8 @@ def update_stack_set(
 def delete_stack_set(
     bsm: BotoSesManager,
     stack_set_name: str,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ):
     """
@@ -208,9 +208,14 @@ def describe_stack_instance(
     stack_set_name: str,
     stack_instance_account: str,
     stack_instance_region: str,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
 ) -> T.Optional[StackInstance]:
+    """
+    Ref:
+
+    - describe_stack_instance: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/describe_stack_instance.html
+    """
     kwargs = dict(
         StackSetName=stack_set_name,
         StackInstanceAccount=stack_instance_account,
@@ -243,8 +248,8 @@ def create_stack_instances(
     param_overrides: T.Optional[T.List[Parameter]] = NOTHING,
     operation_preference: T.Optional[dict] = NOTHING,
     operation_id: T.Optional[str] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ) -> str:
     """
@@ -281,8 +286,8 @@ def update_stack_instances(
     param_overrides: T.Optional[T.List[Parameter]] = NOTHING,
     operation_preference: T.Optional[dict] = NOTHING,
     operation_id: T.Optional[str] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ):
     """
@@ -317,8 +322,8 @@ def delete_stack_instances(
     deployment_targets: T.Optional[dict] = NOTHING,
     operation_preference: T.Optional[dict] = NOTHING,
     operation_id: T.Optional[str] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ) -> str:
     """
@@ -352,8 +357,8 @@ def _list_stack_instances(
     filters: T.Optional[T.List[dict]] = NOTHING,
     stack_instance_account: T.Optional[str] = NOTHING,
     stack_instance_region: T.Optional[str] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     page_size: int = 20,
     max_results: int = 1000,
     verbose: bool = True,
@@ -389,8 +394,8 @@ def list_stack_instances(
     filters: T.Optional[T.List[dict]] = NOTHING,
     stack_instance_account: T.Optional[str] = NOTHING,
     stack_instance_region: T.Optional[str] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     page_size: int = 20,
     max_results: int = 1000,
     verbose: bool = True,

@@ -19,8 +19,8 @@ from .stacks_helpers import (
 
 def resolve_callas_kwargs(
     kwargs: dict,
-    call_as_self: bool,
-    call_as_delegated_admin: bool,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
 ):
     if call_as_self:
         kwargs["CallAs"] = StackSetCallAsEnum.SELF.value
@@ -42,8 +42,8 @@ def resolve_parameters_overrides(
 
 def resolve_permission_model(
     kwargs: dict,
-    permission_model_is_self_managed: bool,
-    permission_model_is_service_managed: bool,
+    permission_model_is_self_managed: T.Optional[bool] = NOTHING,
+    permission_model_is_service_managed: T.Optional[bool] = NOTHING,
 ):
     if permission_model_is_self_managed:
         kwargs["PermissionModel"] = StackSetPermissionModelEnum.SELF_MANAGED.value
@@ -81,15 +81,15 @@ def resolve_create_update_stack_set_common_kwargs(
     kwargs: dict,
     parameters: T.List[Parameter] = NOTHING,
     tags: T.Dict[str, str] = NOTHING,
-    include_iam: bool = False,
-    include_named_iam: bool = False,
-    include_macro: bool = False,
-    permission_model_is_self_managed: bool = False,
-    permission_model_is_service_managed: bool = False,
+    include_iam: T.Optional[bool] = NOTHING,
+    include_named_iam: T.Optional[bool] = NOTHING,
+    include_macro: T.Optional[bool] = NOTHING,
+    permission_model_is_self_managed: T.Optional[bool] = NOTHING,
+    permission_model_is_service_managed: T.Optional[bool] = NOTHING,
     auto_deployment_is_enabled: T.Optional[bool] = NOTHING,
     auto_deployment_retain_stacks_on_account_removal: T.Optional[bool] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
     managed_execution_active: T.Optional[bool] = NOTHING,
 ):
     resolve_parameters(
@@ -130,8 +130,8 @@ def resolve_create_update_stack_set_common_kwargs(
 def resolve_create_update_stack_instances_common_kwargs(
     kwargs: dict,
     parameter_overrides: T.Optional[T.List[Parameter]] = NOTHING,
-    call_as_self: bool = False,
-    call_as_delegated_admin: bool = False,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
 ):
     resolve_parameters_overrides(
         kwargs,
