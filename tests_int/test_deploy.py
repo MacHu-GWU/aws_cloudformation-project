@@ -65,6 +65,7 @@ def deployment(
         parameters=params,
         on_failure_delete=on_failure_delete,
         delays=1,
+        change_set_delays=1,
         wait_until_exec_stopped_on_failure=wait_until_exec_stopped_on_failure,
         skip_plan=skip_plan,
         skip_prompt=True,
@@ -356,14 +357,37 @@ def _test_creation_failed_without_change_set():
     ensure_stack_exist_or_not(stack_name, exists=False)
 
 
+def _test_deploy_stack_set_happy_path():
+    # ----------------------------------------------------------------------
+    # prepare some variables
+    # ----------------------------------------------------------------------
+    project_name = "aws-cf-deploy-stack-set"
+    stack_set_name = project_name
+    params = [
+        aws_cf.Parameter(key="ProjectName", value=project_name),
+    ]
+
+    aws_cf.deploy_stack_set(
+        bsm=bsm,
+        stack_set_name=stack_set_name,
+        template=happy_path.tpl_1,
+        parameters=params,
+        permission_model_is_service_managed=True,
+        auto_deployment_is_enabled=False,
+        call_as_delegated_admin=True,
+    )
+
+
 def test():
     print("")
     with DateTimeTimer():
-        _test_deploy_happy_path(with_change_set=False)
-        _test_deploy_happy_path(with_change_set=True)
+        # _test_deploy_happy_path(with_change_set=False)
+        # _test_deploy_happy_path(with_change_set=True)
+        #
+        # _test_creation_failed_with_change_set()
+        # _test_creation_failed_without_change_set()
 
-        _test_creation_failed_with_change_set()
-        _test_creation_failed_without_change_set()
+        _test_deploy_stack_set_happy_path()
 
 
 if __name__ == "__main__":

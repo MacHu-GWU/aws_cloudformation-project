@@ -72,7 +72,6 @@ def create_stack_set(
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
     client_request_token: T.Optional[str] = NOTHING,
-    managed_execution_active: T.Optional[bool] = NOTHING,
     verbose: bool = True,
 ) -> str:
     """
@@ -106,7 +105,6 @@ def create_stack_set(
         auto_deployment_retain_stacks_on_account_removal=auto_deployment_retain_stacks_on_account_removal,
         call_as_self=call_as_self,
         call_as_delegated_admin=call_as_delegated_admin,
-        managed_execution_active=managed_execution_active,
     )
     res = bsm.cloudformation_client.create_stack_set(**resolve_kwargs(**kwargs))
     return res["StackSetId"]

@@ -4,6 +4,7 @@ import typing as T
 
 from func_args import NOTHING
 
+from ..helper import get_true_flag_count
 from ..stack import Parameter
 from ..stack_set import (
     StackSetPermissionModelEnum,
@@ -22,12 +23,25 @@ def resolve_callas_kwargs(
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
 ):
-    if call_as_self:
-        kwargs["CallAs"] = StackSetCallAsEnum.SELF.value
-    elif call_as_delegated_admin:
-        kwargs["CallAs"] = StackSetCallAsEnum.DELEGATED_ADMIN.value
-    else:
-        kwargs["CallAs"] = StackSetCallAsEnum.SELF.value
+    true_flag_count = get_true_flag_count(
+        [
+            call_as_self,
+            call_as_delegated_admin,
+        ]
+    )
+    if true_flag_count == 0:  # pragma: no cover
+        return
+    elif true_flag_count == 1:
+        if call_as_self:
+            kwargs["CallAs"] = StackSetCallAsEnum.SELF.value
+        elif call_as_delegated_admin:
+            kwargs["CallAs"] = StackSetCallAsEnum.DELEGATED_ADMIN.value
+        else:  # pragma: no cover
+            raise NotImplementedError
+    else:  # pragma: no cover
+        raise ValueError(
+            "You can only set one of " "call_as_self, call_as_delegated_admin to True!"
+        )
 
 
 def resolve_parameters_overrides(
@@ -45,12 +59,28 @@ def resolve_permission_model(
     permission_model_is_self_managed: T.Optional[bool] = NOTHING,
     permission_model_is_service_managed: T.Optional[bool] = NOTHING,
 ):
-    if permission_model_is_self_managed:
-        kwargs["PermissionModel"] = StackSetPermissionModelEnum.SELF_MANAGED.value
-    elif permission_model_is_service_managed:
-        kwargs["PermissionModel"] = StackSetPermissionModelEnum.SERVICE_MANAGED.value
-    else:
-        kwargs["PermissionModel"] = StackSetPermissionModelEnum.SELF_MANAGED.value
+    true_flag_count = get_true_flag_count(
+        [
+            permission_model_is_self_managed,
+            permission_model_is_service_managed,
+        ]
+    )
+    if true_flag_count == 0:  # pragma: no cover
+        return
+    elif true_flag_count == 1:
+        if permission_model_is_self_managed:
+            kwargs["PermissionModel"] = StackSetPermissionModelEnum.SELF_MANAGED.value
+        elif permission_model_is_service_managed:
+            kwargs[
+                "PermissionModel"
+            ] = StackSetPermissionModelEnum.SERVICE_MANAGED.value
+        else:  # pragma: no cover
+            raise NotImplementedError
+    else:  # pragma: no cover
+        raise ValueError(
+            "You can only set one of "
+            "permission_model_is_self_managed, permission_model_is_service_managed to True!"
+        )
 
 
 def resolve_auto_deployment(
