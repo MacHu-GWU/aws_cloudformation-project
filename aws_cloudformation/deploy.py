@@ -5,6 +5,7 @@ Implement the fancy deployment and remove API with "terraform plan" liked featur
 """
 
 import typing as T
+import dataclasses
 from datetime import datetime
 
 from boto_session_manager import BotoSesManager
@@ -53,6 +54,14 @@ def prompt_to_proceed() -> bool:  # pragma: no cover
     return value.strip() in ["Y", "YES"]
 
 
+@dataclasses.dataclass
+class DeployStackResponse:
+    is_deploy_happened: bool = dataclasses.field(default=False)
+    is_create: T.Optional[bool] = dataclasses.field(default=None)
+    stack_id: T.Optional[str] = dataclasses.field(default=None)
+    change_set_id: T.Optional[str] = dataclasses.field(default=None)
+
+
 def _deploy_stack_without_change_set(
     bsm: "BotoSesManager",
     stack_name: str,
@@ -83,7 +92,7 @@ def _deploy_stack_without_change_set(
     wait_until_exec_stopped_on_failure: bool = False,
     skip_prompt: bool = False,
     verbose: bool = True,
-) -> T.Optional[str]:
+) -> DeployStackResponse:
     stack = better_boto.describe_live_stack(
         bsm=bsm,
         name=stack_name,
@@ -91,11 +100,11 @@ def _deploy_stack_without_change_set(
 
     # doesn't exist, do create
     if stack is None:
-        action = "create"
+        is_create = True
         if skip_prompt is False:  # pragma: no cover
             if prompt_to_proceed() is False:
                 print("Do nothing.")
-                return
+                return DeployStackResponse()
         kwargs = dict(
             bsm=bsm,
             stack_name=stack_name,
@@ -140,7 +149,7 @@ def _deploy_stack_without_change_set(
             )
     # already exists, do update
     else:
-        action = "update"
+        is_create = False
         if verbose:
             console_url = get_stack_details_console_url(stack_id=stack.id)
             print(
@@ -158,7 +167,7 @@ def _deploy_stack_without_change_set(
         if skip_prompt is False:  # pragma: no cover
             if prompt_to_proceed() is False:
                 print("Do nothing.")
-                return
+                return DeployStackResponse()
 
         try:
             kwargs = dict(
@@ -199,7 +208,7 @@ def _deploy_stack_without_change_set(
             if "No updates are to be performed" in str(e):
                 if verbose:
                     print("  🟡 no updates are to be performed.")
-                return None
+                return DeployStackResponse()
             else:  # pragma: no cover
                 raise e
 
@@ -213,7 +222,11 @@ def _deploy_stack_without_change_set(
             timeout=timeout,
             verbose=verbose,
         )
-    return stack_id
+    return DeployStackResponse(
+        is_deploy_happened=True,
+        is_create=is_create,
+        stack_id=stack_id,
+    )
 
 
 def change_set_name_suffix() -> str:
@@ -249,7 +262,7 @@ def _deploy_stack_using_change_set(
     change_set_timeout: T.Union[int, float] = DEFAULT_CHANGE_SET_TIMEOUT,
     skip_prompt: bool = False,
     verbose: bool = True,
-):
+) -> DeployStackResponse:
     stack = better_boto.describe_live_stack(bsm, stack_name)
     change_set_name = f"{stack_name}-{change_set_name_suffix()}"
     create_change_set_kwargs = dict(
@@ -289,7 +302,8 @@ def _deploy_stack_using_change_set(
 
     # doesn't exist, do create
     if stack is None:
-        action = "create"
+        is_create = True
+        execute_message = "+ create stack progress"
         create_change_set_kwargs["change_set_type_is_create"] = True
     # already exist, do update
     else:
@@ -300,8 +314,8 @@ def _deploy_stack_using_change_set(
                 f"but never take action to approve or deny it. "
                 f"You can delete it and retry."
             )
-
-        action = "update"
+        is_create = False
+        execute_message = "+/- update stack progress"
         create_change_set_kwargs["change_set_type_is_update"] = True
 
     stack_id, change_set_id = better_boto.create_change_set(
@@ -339,7 +353,7 @@ def _deploy_stack_using_change_set(
             f"    🟡 the submitted information didn't contain changes. "
             f"Submit different information to create a change set."
         )
-        return
+        return DeployStackResponse()
     except exc.CreateStackChangeSetFailedError as e:  # pragma: no cover
         raise e
 
@@ -356,12 +370,12 @@ def _deploy_stack_using_change_set(
                 )
             else:
                 print("  cancel update.")
-            return
+            return DeployStackResponse()
 
     if verbose:
         console_url = get_stack_details_console_url(stack_id=stack_id)
         print(
-            f"  📋 preview {Fore.CYAN}{action} stack progress{Style.RESET_ALL} at: {console_url}"
+            f"  📋 preview {Fore.CYAN}{execute_message}{Style.RESET_ALL} at: {console_url}"
         )
 
     better_boto.execute_change_set(
@@ -381,6 +395,13 @@ def _deploy_stack_using_change_set(
             timeout=timeout,
             verbose=verbose,
         )
+
+    return DeployStackResponse(
+        is_deploy_happened=True,
+        is_create=is_create,
+        stack_id=stack_id,
+        change_set_id=change_set_id,
+    )
 
 
 def _find_ruler_length(
@@ -429,36 +450,36 @@ def deploy_stack(
     change_set_delays: T.Union[int, float] = DEFAULT_CHANGE_SET_DELAYS,
     change_set_timeout: T.Union[int, float] = DEFAULT_CHANGE_SET_TIMEOUT,
     verbose: bool = True,
-):
+) -> DeployStackResponse:
     """
-    Deploy (create or update) an AWS CloudFormation stack. But way more powerful
+    Deploy (create or update) an AWS CloudFormation stack. But more powerful
     than the original boto3 API.
 
-    Reference:
+    Deploy Stack related boto3 API:
 
     - Create Stack Boto3 API: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.create_stack
-    - Update Stack Boto3 API: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
+    - Deploy Stack related boto3 API: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.update_stack
 
     :param bsm: ``boto_session_manager.BotoSesManager`` object
     :param stack_name: the stack name or unique stack id
     :param template: CloudFormation template JSON or Yaml body in text, or the
         s3 uri pointing to a CloudFormation template file.
-    :param use_previous_template: see "Update Stack Boto3 API" link
+    :param use_previous_template: see "Deploy Stack related boto3 API" link
     :param bucket: default None; if given, automatically upload template to S3
         before deployment. see :func:`~aws_cloudformation.better_boto.upload_template_to_s3`
         for more details.
     :param prefix: the s3 prefix where you want to upload the template to
-    :param parameters: see "Update Stack Boto3 API" link
-    :param tags: see "Update Stack Boto3 API" link
-    :param execution_role_arn: see "Update Stack Boto3 API" link
-    :param include_iam: see "Capacities" part in "Update Stack Boto3 API" link
-    :param include_named_iam: see "Capacities" part in "Update Stack Boto3 API" link
-    :param include_macro: see "Capacities" part in "Update Stack Boto3 API" link
+    :param parameters: list of :class:`aws_cloudformation.stack.Parameter` object
+    :param tags: key value dictionary for tags
+    :param execution_role_arn: see "Deploy Stack related boto3 API" link
+    :param include_iam: see "Capacities" part in "Deploy Stack related boto3 API" link
+    :param include_named_iam: see "Capacities" part in "Deploy Stack related boto3 API" link
+    :param include_macro: see "Capacities" part in "Deploy Stack related boto3 API" link
     :param stack_policy: Stack Policy JSON or Yaml body in text, or the
         s3 uri pointing to a Stack Policy JSON template file.
-    :param prefix_stack_policy: see "Update Stack Boto3 API" link
-    :param resource_types: see "Update Stack Boto3 API" link
-    :param client_request_token: see "Update Stack Boto3 API" link
+    :param prefix_stack_policy: see "Deploy Stack related boto3 API" link
+    :param resource_types: see "Deploy Stack related boto3 API" link
+    :param client_request_token: see "Deploy Stack related boto3 API" link
     :param enable_termination_protection: see "Create Stack Boto3 API" link
     :param disable_rollback: see "Create Stack Boto3 API" link
     :param rollback_configuration: see "Create Stack Boto3 API" link
@@ -467,9 +488,12 @@ def deploy_stack(
         not using change set. If you set skip_plan = True, then this parameter
         will be ignored.
     :param on_failure_rollback: only used when you create stack directly,
-        not using change set.
+        not using change set.only used when you create stack directly,
+        not using change set. If you set skip_plan = True, then this parameter
+        will be ignored.
     :param on_failure_delete: only used when you create stack directly,
-        this arg will be ignored if it is an update, or using change set.
+        not using change set. If you set skip_plan = True, then this parameter
+        will be ignored.
     :param wait: default True; if True, then wait the create / update action
         to success or fail; if False, then it is an async call and return immediately;
         note that if you have skip_plan is False (using change set), you always
@@ -508,7 +532,7 @@ def deploy_stack(
         print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
 
     if skip_plan is True:
-        _deploy_stack_without_change_set(
+        deploy_stack_response = _deploy_stack_without_change_set(
             bsm=bsm,
             stack_name=stack_name,
             template=template,
@@ -540,7 +564,7 @@ def deploy_stack(
             verbose=verbose,
         )
     else:
-        _deploy_stack_using_change_set(
+        deploy_stack_response = _deploy_stack_using_change_set(
             bsm=bsm,
             stack_name=stack_name,
             template=template,
@@ -571,6 +595,8 @@ def deploy_stack(
 
     if verbose:
         print("  done")
+
+    return deploy_stack_response
 
 
 def remove_stack(
@@ -613,7 +639,7 @@ def remove_stack(
         in prompt to do deletion; if True, then execute the deletion directly.
     :param verbose: whether you want to log information to console
 
-    :return: Nothing
+    :return: None
 
     .. versionadded:: 0.1.1
     """
@@ -665,17 +691,17 @@ def remove_stack(
 def deploy_stack_set(
     bsm: "BotoSesManager",
     stack_set_name: str,
-    description: T.Optional[str] = NOTHING,
     template: T.Optional[str] = NOTHING,
     use_previous_template: T.Optional[bool] = NOTHING,
     bucket: T.Optional[str] = NOTHING,
     prefix: T.Optional[str] = DEFAULT_S3_PREFIX_FOR_TEMPLATE,
+    description: T.Optional[str] = NOTHING,
     stack_id: T.Optional[str] = NOTHING,
-    parameters: T.List[Parameter] = NOTHING,
+    parameters: T.Optional[T.List[Parameter]] = NOTHING,
     include_iam: T.Optional[bool] = NOTHING,
     include_named_iam: T.Optional[bool] = NOTHING,
     include_macro: T.Optional[bool] = NOTHING,
-    tags: dict = NOTHING,
+    tags: T.Optional[T.Dict[str, str]] = NOTHING,
     operation_preferences: T.Optional[dict] = NOTHING,
     admin_role_arn: T.Optional[str] = NOTHING,
     execution_role_name: T.Optional[str] = NOTHING,
@@ -694,36 +720,46 @@ def deploy_stack_set(
     verbose: bool = True,
 ) -> T.Tuple[bool, str]:  # pragma: no cover
     """
+    Deploy (create or update) an AWS CloudFormation stack set. But more powerful
+    than the original boto3 API.
 
-    :param bsm:
-    :param stack_set_name:
-    :param description:
-    :param template:
+    Deploy StackSet related boto3 API:
+
+    - create_stack_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/create_stack_set.html
+    - update_stack_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/update_stack_set.html
+
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param stack_set_name: the stack set name
+    :param template: CloudFormation template JSON or Yaml body in text, or the
+        s3 uri pointing to a CloudFormation template file.
     :param use_previous_template:
-    :param bucket:
-    :param prefix:
-    :param stack_id:
-    :param parameters:
-    :param include_iam:
-    :param include_named_iam:
-    :param include_macro:
-    :param tags:
-    :param operation_preferences:
-    :param admin_role_arn:
-    :param execution_role_name:
-    :param deployment_target:
-    :param permission_model_is_self_managed:
-    :param permission_model_is_service_managed:
-    :param auto_deployment_is_enabled:
-    :param auto_deployment_retain_stacks_on_account_removal:
-    :param operation_id:
-    :param accounts:
-    :param regions:
-    :param call_as_self:
-    :param call_as_delegated_admin:
-    :param client_request_token:
-    :param managed_execution_active:
-    :param verbose:
+    :param bucket: default None; if given, automatically upload template to S3
+        before deployment. see :func:`~aws_cloudformation.better_boto.upload_template_to_s3`
+        for more details.
+    :param prefix: the s3 prefix where you want to upload the template to
+    :param description: stack set description
+    :param stack_id: the stack id you want to import
+    :param parameters: list of :class:`aws_cloudformation.stack.Parameter` object
+    :param include_iam: see "Capacities" part in "Deploy Stack related boto3 API" link
+    :param include_named_iam: see "Capacities" part in "Deploy Stack related boto3 API" link
+    :param include_macro: see "Capacities" part in "Deploy Stack related boto3 API" link
+    :param tags: key value dictionary for tags
+    :param operation_preferences: see "Deploy StackSet related boto3 API" link
+    :param admin_role_arn: see "Deploy StackSet related boto3 API" link
+    :param execution_role_arn: see "Deploy StackSet related boto3 API" link
+    :param deployment_target: see "Deploy StackSet related boto3 API" link
+    :param permission_model_is_self_managed: see "Deploy StackSet related boto3 API" link
+    :param permission_model_is_service_managed: see "Deploy StackSet related boto3 API" link
+    :param auto_deployment_is_enabled: see "Deploy StackSet related boto3 API" link
+    :param auto_deployment_retain_stacks_on_account_removal: see "Deploy StackSet related boto3 API" link
+    :param operation_id: see "Deploy StackSet related boto3 API" link
+    :param accounts: see "Deploy StackSet related boto3 API" link
+    :param regions: see "Deploy StackSet related boto3 API" link
+    :param call_as_self: see "Deploy StackSet related boto3 API" link
+    :param call_as_delegated_admin: see "Deploy StackSet related boto3 API" link
+    :param client_request_token: see "Deploy StackSet related boto3 API" link
+    :param managed_execution_active: see "Deploy StackSet related boto3 API" link
+    :param verbose: whether you want to log information to console
 
     :return: (is_create, stack_set_id_or_operation_id)
     """
@@ -845,14 +881,19 @@ def remove_stack_set(
     verbose: bool = True,
 ):
     """
-    Remove an AWS CloudFormation Stack.
+    Remove an AWS CloudFormation stack set.
 
-    :param bsm:
-    :param stack_set_name:
-    :param call_as_self:
-    :param call_as_delegated_admin:
-    :param verbose:
-    :return:
+    Delete StackSet related boto3 API:
+
+    - delete_stack_set: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/delete_stack_set.html
+
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param stack_set_name: the stack set name
+    :param call_as_self: see "Delete StackSet related boto3 API" link
+    :param call_as_delegated_admin: see "Delete StackSet related boto3 API" link
+    :param verbose: whether you want to log information to console
+
+    :return: None
     """
     aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
     if verbose:

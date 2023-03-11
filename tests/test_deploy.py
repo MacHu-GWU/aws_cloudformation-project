@@ -3,7 +3,12 @@
 import cottonformation as cf
 
 import aws_cloudformation as aws_cf
-from aws_cloudformation.deploy import deploy_stack, remove_stack
+from aws_cloudformation.deploy import (
+    deploy_stack,
+    remove_stack,
+    deploy_stack_set,
+    remove_stack_set,
+)
 
 from aws_cloudformation.tests.mocker import BaseTest
 from aws_cloudformation.tests.stacks.iam_stack import (
@@ -15,13 +20,11 @@ from aws_cloudformation.tests.stacks.iam_stack import (
 
 
 class Test(BaseTest):
-    def test(self):
+    def _test_stack(self):
         # ----------------------------------------------------------------------
         # prepare some variables
         # ----------------------------------------------------------------------
-        bucket = "my-bucket"
-
-        project_name = "aws-cf-deploy-test"
+        project_name = "aws-cf-deploy-stack-test"
         stack_name = project_name
         params = [
             aws_cf.Parameter(
@@ -30,13 +33,12 @@ class Test(BaseTest):
             )
         ]
 
-        self.bsm.s3_client.create_bucket(Bucket=bucket)
         env = cf.Env(bsm=self.bsm)
 
         # ----------------------------------------------------------------------
         # prepare test cases
         # ----------------------------------------------------------------------
-        def delete_it():
+        def delete_stack():
             remove_stack(
                 bsm=self.bsm,
                 stack_name=stack_name,
@@ -44,73 +46,93 @@ class Test(BaseTest):
                 skip_prompt=True,
             )
 
-        def deployment_1():
-            print("****** deployment 1 ******")
-            deploy_stack(
+        def deployment(
+            ith: int,
+            tpl: cf.Template,
+            has_nested: bool = False,
+        ):
+            print(f"****** deployment {ith} ******")
+            if has_nested:
+                env.package(tpl, self.bucket)
+            return deploy_stack(
                 bsm=self.bsm,
                 stack_name=stack_name,
-                bucket=bucket,
-                template=make_tpl_1().to_json(),
-                parameters=params,
-                delays=0.1,
-                skip_plan=True,
-                skip_prompt=True,
-                include_named_iam=True,
-            )
-
-        def deployment_2():
-            print("****** deployment 2 ******")
-            deploy_stack(
-                bsm=self.bsm,
-                stack_name=stack_name,
-                bucket=bucket,
-                template=make_tpl_2().to_json(),
-                parameters=params,
-                delays=0.1,
-                change_set_delays=0.1,
-                skip_prompt=True,
-                include_named_iam=True,
-            )
-
-        def deployment_3():
-            print("****** deployment 3 ******")
-            deploy_stack(
-                bsm=self.bsm,
-                stack_name=stack_name,
-                bucket=bucket,
-                template=make_tpl_3().to_json(),
-                parameters=params,
-                delays=0.1,
-                skip_plan=True,
-                skip_prompt=True,
-                include_named_iam=True,
-                plan_nested_stack=True,
-            )
-
-        def deployment_4():
-            print("****** deployment 4 ******")
-            tpl = make_tpl_4()
-
-            env.package(tpl, bucket)
-
-            deploy_stack(
-                bsm=self.bsm,
-                stack_name=stack_name,
-                bucket=bucket,
                 template=tpl.to_json(),
+                bucket=self.bucket,
                 parameters=params,
                 delays=0.1,
-                change_set_delays=0.1,
+                skip_plan=True,
                 skip_prompt=True,
                 include_named_iam=True,
-                plan_nested_stack=True,
             )
 
-        delete_it()
-        deployment_1()
-        deployment_2()
-        deployment_3()
-        deployment_4()
+        delete_stack()
+        response = deployment(ith=1, tpl=make_tpl_1())
+        assert response.is_deploy_happened is True
+        assert response.is_create is True
+
+        response = deployment(ith=1, tpl=make_tpl_1())
+        assert response.is_deploy_happened is False
+        assert response.is_create is None
+        assert response.stack_id is None
+        assert response.change_set_id is None
+
+        response = deployment(ith=2, tpl=make_tpl_2())
+        assert response.is_deploy_happened is True
+        assert response.is_create is False
+
+        response = deployment(ith=3, tpl=make_tpl_3())
+        assert response.is_deploy_happened is True
+        assert response.is_create is False
+
+        response = deployment(ith=4, tpl=make_tpl_4(), has_nested=True)
+        assert response.is_deploy_happened is True
+        assert response.is_create is False
+
+    def _test_stack_set(self):
+        # ----------------------------------------------------------------------
+        # prepare some variables
+        # ----------------------------------------------------------------------
+        project_name = "aws-cf-deploy-stack-set-test"
+        stack_set_name = project_name
+        params = [
+            aws_cf.Parameter(
+                key="ProjectName",
+                value=project_name,
+            )
+        ]
+
+        env = cf.Env(bsm=self.bsm)
+
+        # ----------------------------------------------------------------------
+        # prepare test cases
+        # ----------------------------------------------------------------------
+        def delete_stack_set():
+            remove_stack_set(
+                bsm=self.bsm,
+                stack_set_name=stack_set_name,
+            )
+
+        def deployment(
+            ith: int,
+            tpl: cf.Template,
+        ):
+            print(f"****** deployment {ith} ******")
+            deploy_stack_set(
+                bsm=self.bsm,
+                stack_set_name=stack_set_name,
+                template=tpl.to_json(),
+                bucket=self.bucket,
+                parameters=params,
+            )
+
+        delete_stack_set()
+        deployment(ith=1, tpl=make_tpl_1())
+        deployment(ith=2, tpl=make_tpl_2())
+
+    def test(self):
+        self._test_stack()
+        self._test_stack_set()
 
 
 if __name__ == "__main__":
