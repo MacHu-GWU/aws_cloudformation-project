@@ -18,17 +18,15 @@ Backlog
 
 1.3.2 (2023-03-11)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-**Features and Improvements**
-
 **Minor Improvements**
 
 - :func:`~aws_cloudformation.deploy.deploy_stack` now returns a :class:`~aws_cloudformation.deploy.DeployStackResponse` object.
 
-**Bugfixes**
-
 **Miscellaneous**
 
 - fix type hint
+- improve documents
+- add documentation website
 
 
 1.3.1 (2023-03-10)
@@ -45,8 +43,6 @@ Backlog
 **Bugfixes**
 
 - fix a bug that waiter didn't raise exception when ``deploy_stack`` or ``remove_stack`` fail.
-
-**Miscellaneous**
 
 
 1.2.1 (2022-12-08)
