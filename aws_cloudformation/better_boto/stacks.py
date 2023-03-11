@@ -49,7 +49,11 @@ def _describe_stacks(
 
 
 class StackIterProxy(IterProxy[Stack]):
-    """ """
+    """
+    Reference:
+
+    - https://github.com/MacHu-GWU/iterproxy-project
+    """
 
 
 def describe_stacks(
@@ -60,6 +64,8 @@ def describe_stacks(
     Ref:
 
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation.html#CloudFormation.Client.describe_stacks
+
+    :return: :class:`StackIterProxy`
     """
     return StackIterProxy(
         _describe_stacks(bsm=bsm, name=name),
@@ -602,12 +608,12 @@ def wait_create_change_set_to_finish(
     You can run this function after you run :func:`create_change_set`. It will
     wait until the change set creation success, fail, or timeout.
 
-    :param bsm:
-    :param stack_name:
-    :param change_set_id:
-    :param delays:
-    :param timeout:
-    :param verbose:
+    :param bsm: ``boto_session_manager.BotoSesManager`` object
+    :param stack_name: the stack name or unique stack id
+    :param change_set_id: the change set id
+    :param delays: how long it waits (in seconds) between two "get status" api call
+    :param timeout: how long it will raise timeout error
+    :param verbose: whether you want to log information to console
 
     :return: ``ChangeSet`` object
     """

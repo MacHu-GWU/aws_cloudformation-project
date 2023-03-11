@@ -383,7 +383,11 @@ def _list_stack_instances(
 
 
 class StackInstanceIterProxy(IterProxy[StackInstance]):
-    """ """
+    """
+    Reference:
+
+    - https://github.com/MacHu-GWU/iterproxy-project
+    """
 
 
 def list_stack_instances(
@@ -402,6 +406,8 @@ def list_stack_instances(
     Ref:
 
     - list_stack_instances: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudformation/client/list_stack_instances.html
+
+    :return: :class:`StackInstanceIterProxy`
     """
     return StackInstanceIterProxy(
         _list_stack_instances(

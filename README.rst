@@ -1,4 +1,4 @@
-.. .. image:: https://readthedocs.org/projects/aws_cloudformation/badge/?version=latest
+.. image:: https://readthedocs.org/projects/aws_cloudformation/badge/?version=latest
         :target: https://aws_cloudformation.readthedocs.io/index.html
         :alt: Documentation Status
 
@@ -22,13 +22,13 @@
 
 ------
 
-.. .. image:: https://img.shields.io/badge/Link-Document-blue.svg
+.. image:: https://img.shields.io/badge/Link-Document-blue.svg
     :target: https://aws_cloudformation.readthedocs.io/index.html
 
-..  .. image:: https://img.shields.io/badge/Link-API-blue.svg
+.. image:: https://img.shields.io/badge/Link-API-blue.svg
     :target: https://aws_cloudformation.readthedocs.io/py-modindex.html
 
-..  .. image:: https://img.shields.io/badge/Link-Source_Code-blue.svg
+.. image:: https://img.shields.io/badge/Link-Source_Code-blue.svg
     :target: https://aws_cloudformation.readthedocs.io/py-modindex.html
 
 .. image:: https://img.shields.io/badge/Link-Install-blue.svg
@@ -54,7 +54,7 @@ AWS CloudFormation deployment for human, Enable ``terraform plan``, ``terraform 
 **Features**:
 
 1. Preview the change set details before deployment.
-2. Automatically upload big template to S3 before deployment.
+2. Automatically upload big template to S3 before deployment, even for nested template.
 3. Support SYNC call for deployment and deletion, wait until it success or fail (the original API is ASYNC call).
 4. Allow prompt for user to enter "YES" to proceed.
 5. Provide hyperlink for one-click to jump to the Console to preview.
@@ -275,8 +275,6 @@ Talk is cheap, show me the code
         stack_name=stack_name,
         template=make_tpl_2().to_json(),
         skip_prompt=True,
-        # skip_plan=False,
-        # wait=True,
     )
 
     deploy_stack(
@@ -284,8 +282,6 @@ Talk is cheap, show me the code
         stack_name=stack_name,
         template=make_tpl_3().to_json(),
         skip_prompt=True,
-        # skip_plan=False,
-        # wait=True,
     )
 
     remove_stack(

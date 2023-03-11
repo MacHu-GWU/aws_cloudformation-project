@@ -12,19 +12,9 @@ from aws_cloudformation.tests.boto_ses import bsm
 from aws_cloudformation.tests.stacks import (
     happy_path,
     malformed,
-    iam_stack,
-    secretmanager_stack,
 )
 
-from aws_cloudformation.tests.stacks.iam_stack import (
-    make_tpl_1,
-    make_tpl_2,
-    make_tpl_3,
-    make_tpl_4,
-    make_tpl_0_malformed,
-)
-
-bucket = f"{bsm.aws_account_id}-{bsm.aws_region}-artifacts"
+bucket = "cf-templates-x33wndcdbt1e-us-east-1"
 
 
 # ------------------------------------------------------------------------------
@@ -64,7 +54,9 @@ def deploy_stack(
         parameters=params,
         on_failure_delete=on_failure_delete,
         delays=1,
+        timeout=180,
         change_set_delays=1,
+        change_set_timeout=180,
         wait_until_exec_stopped_on_failure=wait_until_exec_stopped_on_failure,
         skip_plan=skip_plan,
         skip_prompt=True,
