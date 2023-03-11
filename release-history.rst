@@ -15,7 +15,23 @@ Backlog
 **Miscellaneous**
 
 
-1.3.1 (2022-03-10)
+
+1.3.2 (2023-03-11)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features and Improvements**
+
+**Minor Improvements**
+
+- :func:`~aws_cloudformation.deploy.deploy_stack` now returns a :class:`~aws_cloudformation.deploy.DeployStackResponse` object.
+
+**Bugfixes**
+
+**Miscellaneous**
+
+- fix type hint
+
+
+1.3.1 (2023-03-10)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
