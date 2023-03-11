@@ -182,9 +182,9 @@ class StackInstance:
     """ """
 
     stack_set_id: str = dataclasses.field()
-    stack_id: str = dataclasses.field()
     aws_region: str = dataclasses.field()
     aws_account_id: str = dataclasses.field()
+    stack_id: T.Optional[str] = dataclasses.field(default=None)
     param_overrides: T.Dict[str, Parameter] = dataclasses.field(default_factory=dict)
     status: T.Optional[StackInstanceStatusEnum] = dataclasses.field(default=None)
     statck_instance_status: dict = dataclasses.field(default_factory=dict)
@@ -252,9 +252,9 @@ class StackInstance:
         """
         return cls(
             stack_set_id=data["StackSetId"],
-            stack_id=data["StackId"],
             aws_region=data["Region"],
             aws_account_id=data["Account"],
+            stack_id=data.get("StackId"),
             param_overrides={
                 dct["ParameterKey"]: Parameter(
                     key=dct["ParameterKey"],
