@@ -8,12 +8,20 @@ Backlog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
+- add ``deploy_stack_instances``, ``remove_stack_instances``, ``apply_stack_instances`` methods.
+
 **Minor Improvements**
 
 **Bugfixes**
 
 **Miscellaneous**
 
+
+1.3.3 (2023-03-11)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Minor Improvements**
+
+- :attr:`~aws_cloudformation.stack_set.StackInstance.stack_id` might be ``None`` when creation of a stack instance failed.
 
 
 1.3.2 (2023-03-11)
