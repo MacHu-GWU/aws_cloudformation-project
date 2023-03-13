@@ -9,7 +9,7 @@ import enum
 import dataclasses
 from datetime import datetime
 
-from aws_console_url import AWSConsole
+import aws_console_url
 
 from .helper import get_enum_by_name
 from .taggings import to_tag_dict
@@ -217,6 +217,18 @@ class Stack:
     drift_status: T.Optional[DriftStatusEnum] = dataclasses.field(default=None)
     drift_last_check_time: T.Optional[datetime] = dataclasses.field(default=None)
 
+    @property
+    def arn(self) -> str:
+        return self.id
+
+    @property
+    def stack_id(self) -> str:
+        return self.id
+
+    @property
+    def stack_arn(self) -> str:
+        return self.id
+
     def is_success(self) -> bool:  # pragma: no cover
         """ """
         return self.status in _SUCCESS_STATUS
@@ -240,6 +252,12 @@ class Stack:
     def is_live(self) -> bool:  # pragma: no cover
         """ """
         return not (self.status in _NOT_LIVE_STATUS)
+
+    @classmethod
+    def from_arn(cls, arn: str) -> "Stack":
+        """ """
+        stack = aws_console_url.aws_resource.CloudFormationStack.from_arn(arn)
+        return cls(id=arn, name=stack.name)
 
     @classmethod
     def from_describe_stacks_response(cls, data: dict) -> "Stack":
@@ -302,7 +320,7 @@ class Stack:
 
     @property
     def console_url(self) -> str:
-        aws_console = AWSConsole(aws_region=self.aws_region)
+        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_stack_info(name_or_arn=self.id)
 
 
@@ -495,7 +513,7 @@ class ChangeSet:
 
     @property
     def console_url(self) -> str:
-        aws_console = AWSConsole(aws_region=self.aws_region)
+        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_change_set(
             stack_name_or_arn=self.stack_id,
             change_set_id=self.change_set_id,

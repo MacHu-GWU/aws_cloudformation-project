@@ -9,7 +9,7 @@ import enum
 import dataclasses
 from datetime import datetime
 
-from aws_console_url import AWSConsole
+import aws_console_url
 
 from .helper import get_enum_by_name
 from .stack import (
@@ -94,6 +94,16 @@ class StackSet:
         )
 
     @classmethod
+    def from_arn(cls, arn: str) -> "StackSet":
+        """ """
+        stack_set = aws_console_url.aws_resource.CloudFormationStackSet.from_arn(arn)
+        return cls(
+            id=stack_set.stack_set_id,
+            name=stack_set.name,
+            arn=stack_set.arn
+        )
+
+    @classmethod
     def from_describe_stack_set_response(cls, data: dict) -> "StackSet":
         """
         Create a :class:`~aws_cottonformation.stack_set.StackSet` object from the
@@ -141,7 +151,7 @@ class StackSet:
 
     @property
     def console_url(self) -> str:
-        aws_console = AWSConsole(aws_region=self.aws_region)
+        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_stack_set_info(
             name_or_id_or_arn=self.arn,
             is_self_managed=self.is_self_managed,
@@ -302,7 +312,7 @@ class StackInstance:
         """
         The URL to the deployment target account CloudFormation stack.
         """
-        aws_console = AWSConsole(aws_region=self.aws_region)
+        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_stack_info(
             name_or_arn=self.stack_id,
         )
