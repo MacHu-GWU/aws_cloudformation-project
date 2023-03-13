@@ -9,6 +9,7 @@ import enum
 import dataclasses
 from datetime import datetime
 
+from aws_console_url import AWSConsole
 
 from .helper import get_enum_by_name
 from .stack import (
@@ -128,6 +129,23 @@ class StackSet:
             auto_deployment=data.get("AutoDeployment", {}),
             managed_execution=data.get("ManagedExecution"),
             regions=data.get("Regions", []),
+        )
+
+    @property
+    def aws_region(self) -> str:
+        return self.arn.split(":")[3]
+
+    @property
+    def aws_account_id(self) -> str:
+        return self.arn.split(":")[4]
+
+    @property
+    def console_url(self) -> str:
+        aws_console = AWSConsole(aws_region=self.aws_region)
+        return aws_console.cloudformation.get_stack_set_info(
+            name_or_id_or_arn=self.arn,
+            is_self_managed=self.is_self_managed,
+            is_service_managed=self.is_service_managed,
         )
 
 
@@ -278,3 +296,13 @@ class StackInstance:
     @property
     def acc_and_region(self) -> str:
         return f"{self.aws_account_id}/{self.aws_region}"
+
+    @property
+    def console_url(self) -> str:
+        """
+        The URL to the deployment target account CloudFormation stack.
+        """
+        aws_console = AWSConsole(aws_region=self.aws_region)
+        return aws_console.cloudformation.get_stack_info(
+            name_or_arn=self.stack_id,
+        )

@@ -9,6 +9,8 @@ import enum
 import dataclasses
 from datetime import datetime
 
+from aws_console_url import AWSConsole
+
 from .helper import get_enum_by_name
 from .taggings import to_tag_dict
 
@@ -290,6 +292,19 @@ class Stack:
             ),
         )
 
+    @property
+    def aws_region(self) -> str:
+        return self.id.split(":")[3]
+
+    @property
+    def aws_account_id(self) -> str:
+        return self.id.split(":")[4]
+
+    @property
+    def console_url(self) -> str:
+        aws_console = AWSConsole(aws_region=self.aws_region)
+        return aws_console.cloudformation.get_stack_info(name_or_arn=self.id)
+
 
 class ChangeSetStatusEnum(str, enum.Enum):
     """ """
@@ -468,4 +483,20 @@ class ChangeSet:
             tags=to_tag_dict(data.get("Tags", [])),
             changes=data.get("Changes", []),
             include_nested_stacks=data.get("IncludeNestedStacks"),
+        )
+
+    @property
+    def aws_region(self) -> str:
+        return self.change_set_id.split(":")[3]
+
+    @property
+    def aws_account_id(self) -> str:
+        return self.change_set_id.split(":")[4]
+
+    @property
+    def console_url(self) -> str:
+        aws_console = AWSConsole(aws_region=self.aws_region)
+        return aws_console.cloudformation.get_change_set(
+            stack_name_or_arn=self.stack_id,
+            change_set_id=self.change_set_id,
         )
