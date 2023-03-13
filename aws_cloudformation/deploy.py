@@ -9,7 +9,7 @@ import dataclasses
 from datetime import datetime
 
 from boto_session_manager import BotoSesManager
-from aws_console_url import AWSConsole
+import aws_console_url
 from colorama import Fore, Style
 from func_args import NOTHING, resolve_kwargs
 
@@ -20,22 +20,19 @@ from . import (
 from .stack import (
     Parameter,
     StackStatusEnum,
-)
-from .console import (
-    get_stacks_view_console_url,
-    get_stack_details_console_url,
-    get_change_set_console_url,
+    Stack,
+    ChangeSet,
 )
 from .change_set_visualizer import (
     print_header,
     visualize_change_set,
 )
+from .better_boto.stacksets_helpers import get_filter_stack_set_console_url
 from .deploy_helpers import (
     DEFAULT_S3_PREFIX_FOR_TEMPLATE,
     DEFAULT_S3_PREFIX_FOR_STACK_POLICY,
     resolve_template_kwargs,
     resolve_stack_policy_kwargs,
-    get_filter_stack_set_console_url,
 )
 
 DEFAULT_CHANGE_SET_DELAYS = 5
@@ -123,7 +120,6 @@ def _deploy_stack_without_change_set(
             on_failure_do_nothing=on_failure_do_nothing,
             on_failure_rollback=on_failure_rollback,
             on_failure_delete=on_failure_delete,
-            verbose=verbose,
         )
         resolve_template_kwargs(
             kwargs=kwargs,
@@ -143,18 +139,15 @@ def _deploy_stack_without_change_set(
         )
         stack_id = better_boto.create_stack(**resolve_kwargs(**kwargs))
         if verbose:
-            console_url = get_stack_details_console_url(stack_id=stack_id)
-            print(
-                f"  📋 preview {Fore.CYAN}create stack progress{Style.RESET_ALL} at: {console_url}"
-            )
+            stack = Stack.from_arn(stack_id)
+            print(f"  {Fore.GREEN}+{Style.RESET_ALL} create new stack ...")
+            print(f"    preview at: {stack.console_url}")
     # already exists, do update
     else:
         is_create = False
         if verbose:
-            console_url = get_stack_details_console_url(stack_id=stack.id)
-            print(
-                f"  📋 preview {Fore.CYAN}update stack progress{Style.RESET_ALL} at: {console_url}"
-            )
+            print(f"  {Fore.GREEN}+{Style.RESET_ALL}/{Fore.RED}-{Style.RESET_ALL} update existing stack ...")
+            print(f"    preview at: {stack.console_url}")
 
         if stack.status == StackStatusEnum.REVIEW_IN_PROGRESS:  # pragma: no cover
             raise ValueError(
@@ -185,7 +178,6 @@ def _deploy_stack_without_change_set(
                 disable_rollback=disable_rollback,
                 rollback_configuration=rollback_configuration,
                 notification_arns=notification_arns,
-                verbose=verbose,
             )
             resolve_template_kwargs(
                 kwargs=kwargs,
@@ -263,7 +255,10 @@ def _deploy_stack_using_change_set(
     skip_prompt: bool = False,
     verbose: bool = True,
 ) -> DeployStackResponse:
-    stack = better_boto.describe_live_stack(bsm, stack_name)
+    stack = better_boto.describe_live_stack(
+        bsm,
+        name=stack_name,
+    )
     change_set_name = f"{stack_name}-{change_set_name_suffix()}"
     create_change_set_kwargs = dict(
         bsm=bsm,
@@ -281,7 +276,6 @@ def _deploy_stack_using_change_set(
         notification_arns=notification_arns,
         client_request_token=client_request_token,
         include_nested_stack=plan_nested_stack,
-        verbose=verbose,
     )
     resolve_template_kwargs(
         kwargs=create_change_set_kwargs,
@@ -303,7 +297,7 @@ def _deploy_stack_using_change_set(
     # doesn't exist, do create
     if stack is None:
         is_create = True
-        execute_message = "+ create stack progress"
+        execute_message = f"{Fore.GREEN}+{Style.RESET_ALL} create new stack ..."
         create_change_set_kwargs["change_set_type_is_create"] = True
     # already exist, do update
     else:
@@ -315,7 +309,7 @@ def _deploy_stack_using_change_set(
                 f"You can delete it and retry."
             )
         is_create = False
-        execute_message = "+/- update stack progress"
+        execute_message = f"{Fore.GREEN}+{Style.RESET_ALL}/{Fore.RED}-{Style.RESET_ALL} update existing stack ..."
         create_change_set_kwargs["change_set_type_is_update"] = True
 
     stack_id, change_set_id = better_boto.create_change_set(
@@ -323,13 +317,14 @@ def _deploy_stack_using_change_set(
     )
 
     if verbose:
-        console_url = get_change_set_console_url(
-            stack_id=stack_id,
+        change_set = ChangeSet(
             change_set_id=change_set_id,
+            change_set_name="",
+            stack_id=stack_id,
+            stack_name=stack_name,
         )
-        print(
-            f"  🔎 preview {Fore.CYAN}change set details{Style.RESET_ALL} at: {console_url}"
-        )
+        print("  🔎 create change set ...")
+        print(f"    preview at: {change_set.console_url}")
 
     try:
         change_set = better_boto.wait_create_change_set_to_finish(
@@ -373,10 +368,10 @@ def _deploy_stack_using_change_set(
             return DeployStackResponse()
 
     if verbose:
-        console_url = get_stack_details_console_url(stack_id=stack_id)
-        print(
-            f"  📋 preview {Fore.CYAN}{execute_message}{Style.RESET_ALL} at: {console_url}"
-        )
+        stack = Stack.from_arn(stack_id)
+        print(f"  {execute_message}")
+        print(f"    preview at: {stack.console_url}")
+
 
     better_boto.execute_change_set(
         bsm=bsm,
@@ -528,8 +523,9 @@ def deploy_stack(
             "=",
             length,
         )
-        console_url = get_stacks_view_console_url(stack_name=stack_name)
-        print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
+        aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+        console_url = aws_console.cloudformation.filter_stack(name=stack_name)
+        print(f"  📋 filter stack in AWS CloudFormation console: {console_url}")
 
     if skip_plan is True:
         deploy_stack_response = _deploy_stack_without_change_set(
@@ -650,11 +646,14 @@ def remove_stack(
             "=",
             length,
         )
+        aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+        console_url = aws_console.cloudformation.filter_stack(name=stack_name)
+        print(f"  📋 filter stack in AWS CloudFormation console: {console_url}")
 
-        console_url = get_stacks_view_console_url(stack_name)
-        print(f"  📋 preview stack in AWS CloudFormation console: {console_url}")
-
-    stack = better_boto.describe_live_stack(bsm, stack_name)
+    stack = better_boto.describe_live_stack(
+        bsm=bsm,
+        name=stack_name,
+    )
 
     if stack is None:
         print("  stack doesn't exists!")
@@ -763,10 +762,7 @@ def deploy_stack_set(
 
     :return: (is_create, stack_set_id_or_operation_id)
     """
-    aws_console = AWSConsole(
-        aws_region=bsm.aws_region,
-        bsm=bsm,
-    )
+    aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
     if verbose:
         length = _find_ruler_length(stack_set_name, 52)
         print_header(
@@ -812,7 +808,6 @@ def deploy_stack_set(
             call_as_delegated_admin=call_as_delegated_admin,
             client_request_token=client_request_token,
             managed_execution_active=managed_execution_active,
-            verbose=verbose,
         )
         resolve_template_kwargs(
             kwargs=kwargs,
@@ -853,7 +848,6 @@ def deploy_stack_set(
             call_as_self=call_as_self,
             call_as_delegated_admin=call_as_delegated_admin,
             managed_execution_active=managed_execution_active,
-            verbose=verbose,
         )
         resolve_template_kwargs(
             kwargs=kwargs,
@@ -904,7 +898,7 @@ def remove_stack_set(
 
     :return: None
     """
-    aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+    aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
     if verbose:
         length = _find_ruler_length(stack_set_name, 52)
         print_header(
@@ -925,7 +919,6 @@ def remove_stack_set(
         stack_set_name=stack_set_name,
         call_as_self=call_as_self,
         call_as_delegated_admin=call_as_delegated_admin,
-        verbose=verbose,
     )
 
     if verbose:
