@@ -11,18 +11,24 @@ from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
 from aws_console_url import AWSConsole
 
+from .. import exc
 from ..stack import (
     Parameter,
 )
 from ..stack_set import (
     StackSet,
+    StackInstanceStatusEnum,
+    StackInstanceDetailedStatusEnum,
     StackInstance,
 )
 from .stacksets_helpers import (
     resolve_callas_kwargs,
     resolve_create_update_stack_set_common_kwargs,
     resolve_create_update_stack_instances_common_kwargs,
+    get_stack_set_info_console_url,
+    get_stack_set_instances_console_url,
 )
+from ..waiter import Waiter
 
 
 def describe_stack_set(
@@ -416,3 +422,77 @@ def list_stack_instances(
             max_results=max_results,
         )
     )
+
+
+def wait_deploy_stack_instances_to_stop(
+    bsm: BotoSesManager,
+    stack_set_name: str,
+    raise_errror_until_exec_stopped: bool,
+    delays: T.Union[int, float],
+    timeout: T.Union[int, float],
+    verbose: bool,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+) -> T.List[StackInstance]:
+    """
+    This function can be called after you did a ``create_stack_instances``,
+    ``update_stack_instances``, ``delete_stack_instances`` or ``update_stack_set``.
+    It waits until all changes to stack instances finished. If the deployment
+    failed, then it will error.
+
+    TODO: add test and doc
+
+    :param bsm:
+    :param stack_set_name:
+    :param raise_errror_until_exec_stopped:
+    :param delays:
+    :param timeout:
+    :param verbose:
+    :param call_as_self:
+    :param call_as_delegated_admin:
+    :return:
+    """
+    aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+
+    for _ in Waiter(
+        delays=delays,
+        timeout=timeout,
+        indent=4,
+        verbose=verbose,
+    ):
+        stack_instances = list_stack_instances(
+            bsm=bsm,
+            stack_set_name=stack_set_name,
+            call_as_self=call_as_self,
+            call_as_delegated_admin=call_as_delegated_admin,
+        ).all()
+
+        is_stopped = False
+        error: T.Optional[exc.DeployStackInstanceFailedError] = None
+        for stack_instance in stack_instances:
+            if stack_instance.is_logical_failed():
+                console_url = get_stack_set_instances_console_url(
+                    aws_console=aws_console,
+                    name_or_id_or_arn=stack_instance.stack_set_id,
+                    call_as_self=call_as_self,
+                    call_as_delegated_admin=call_as_delegated_admin,
+                )
+                if error is None:
+                    error = exc.DeployStackInstanceFailedError(
+                        f"stack instance on {stack_instance.aws_account_id} {stack_instance.aws_region} "
+                        f"is failed. reason: {stack_instance.status_reason}, "
+                        f"and it may have more stack instances also failed, "
+                        f"please check in the console: {console_url}."
+                    )
+                if raise_errror_until_exec_stopped is True:
+                    raise error
+
+            if stack_instance.is_logical_stopped():
+                is_stopped = True
+                break
+
+        if error is not None:
+            raise error
+
+        if is_stopped:
+            return stack_instances

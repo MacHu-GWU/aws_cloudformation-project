@@ -267,6 +267,39 @@ class StackInstance:
         """ """
         return self.detailed_status == StackInstanceDetailedStatusEnum.INOPERABLE.value
 
+    def is_logical_succeeded(self) -> bool:  # pragma: no cover
+        """
+        The stack instance is considered as "succeeded" logically.
+        """
+        return (
+
+            self.detailed_status == StackInstanceDetailedStatusEnum.SUCCEEDED.value
+        )
+
+    def is_logical_failed(self) -> bool:  # pragma: no cover
+        """
+        The stack instance is considered as "failed" logically.
+        """
+        return (
+            self.detailed_status in [
+            StackInstanceDetailedStatusEnum.FAILED.value,
+            StackInstanceDetailedStatusEnum.INOPERABLE.value,
+        ]
+        )
+
+    def is_logical_stopped(self) -> bool: # pragma: no cover
+        """
+        The stack instance is considered as "stopped" logically.
+        """
+        return (
+            self.detailed_status in [
+                StackInstanceDetailedStatusEnum.SUCCEEDED.value,
+                StackInstanceDetailedStatusEnum.FAILED.value,
+                StackInstanceDetailedStatusEnum.CANCELLED.value,
+                StackInstanceDetailedStatusEnum.INOPERABLE.value,
+            ]
+        )
+
     @classmethod
     def from_describe_stack_instance_response(cls, data: dict) -> "StackInstance":
         """

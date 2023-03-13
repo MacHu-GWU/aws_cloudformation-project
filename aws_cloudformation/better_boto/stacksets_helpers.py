@@ -3,6 +3,7 @@
 import typing as T
 
 from func_args import NOTHING
+from aws_console_url import AWSConsole
 
 from ..helper import get_true_flag_count
 from ..stack import Parameter
@@ -169,6 +170,64 @@ def resolve_create_update_stack_instances_common_kwargs(
     )
     resolve_callas_kwargs(
         kwargs,
+        call_as_self=call_as_self,
+        call_as_delegated_admin=call_as_delegated_admin,
+    )
+
+
+def get_filter_stack_set_console_url(
+    aws_console: AWSConsole,
+    stack_set_name: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+) -> str:
+    if call_as_self is True:
+        return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
+    elif call_as_delegated_admin is True:
+        return aws_console.cloudformation.filter_service_managed_stack_set(
+            stack_set_name
+        )
+    else:
+        return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
+
+
+def _get_stack_set_tab_console_url(
+    func: T.Callable,
+    name_or_id_or_arn: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+):
+    if call_as_self is True:
+        return func(name_or_id_or_arn, is_self_managed=True)
+    elif call_as_delegated_admin is True:
+        return func(name_or_id_or_arn, is_service_managed=True)
+    else:
+        return func(name_or_id_or_arn, is_self_managed=False)
+
+
+def get_stack_set_info_console_url(
+    aws_console: AWSConsole,
+    name_or_id_or_arn: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+):
+    return _get_stack_set_tab_console_url(
+        aws_console.cloudformation.get_stack_set_info,
+        name_or_id_or_arn=name_or_id_or_arn,
+        call_as_self=call_as_self,
+        call_as_delegated_admin=call_as_delegated_admin,
+    )
+
+
+def get_stack_set_instances_console_url(
+    aws_console: AWSConsole,
+    name_or_id_or_arn: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+):
+    return _get_stack_set_tab_console_url(
+        aws_console.cloudformation.get_stack_set_instances,
+        name_or_id_or_arn=name_or_id_or_arn,
         call_as_self=call_as_self,
         call_as_delegated_admin=call_as_delegated_admin,
     )

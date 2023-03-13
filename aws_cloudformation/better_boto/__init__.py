@@ -38,4 +38,5 @@ from .stacksets import (
     delete_stack_instances,
     StackInstanceIterProxy,
     list_stack_instances,
+    wait_deploy_stack_instances_to_stop,
 )

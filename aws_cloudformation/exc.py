@@ -20,3 +20,6 @@ class CreateStackChangeSetButNotChangeError(Exception):
 class CreateStackChangeSetFailedError(Exception):
     pass
 
+
+class DeployStackInstanceFailedError(Exception):
+    pass
