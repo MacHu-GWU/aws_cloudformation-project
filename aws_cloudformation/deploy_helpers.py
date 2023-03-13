@@ -2,6 +2,7 @@
 
 import typing as T
 import sys
+import dataclasses
 
 from boto_session_manager import BotoSesManager
 from func_args import NOTHING
@@ -142,3 +143,31 @@ def get_filter_stack_set_console_url(
         return aws_console.cloudformation.filter_service_managed_stack_set(stack_set_name)
     else:
         return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
+
+
+def get_stack_set_info_console_url(
+    aws_console: AWSConsole,
+    stack_set_name: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+):
+    if call_as_self is True:
+        return aws_console.cloudformation.get_stack_set_info(stack_set_name, is_self_managed=True)
+    elif call_as_delegated_admin is True:
+        return aws_console.cloudformation.get_stack_set_info(stack_set_name, is_service_managed=True)
+    else:
+        return aws_console.cloudformation.get_stack_set_info(stack_set_name, is_self_managed=True)
+
+
+def get_stack_set_stack_console_url(
+    aws_console: AWSConsole,
+    stack_set_name: str,
+    call_as_self: T.Optional[bool] = NOTHING,
+    call_as_delegated_admin: T.Optional[bool] = NOTHING,
+):
+    if call_as_self is True:
+        return aws_console.cloudformation.get_stack_set_instances(stack_set_name, is_self_managed=True)
+    elif call_as_delegated_admin is True:
+        return aws_console.cloudformation.get_stack_set_instances(stack_set_name, is_service_managed=True)
+    else:
+        return aws_console.cloudformation.get_stack_set_instances(stack_set_name, is_self_managed=True)

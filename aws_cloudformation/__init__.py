@@ -56,4 +56,4 @@ try:
         to_tag_dict,
     )
 except ImportError as e:  # pragma: no cover
-    pass
+    print(e)

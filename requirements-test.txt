@@ -6,4 +6,5 @@ moto[iam]
 moto[cloudformation]
 moto[sts]
 cottonformation>=1.0.1
+aws_organizations>=0.3.1
 rich

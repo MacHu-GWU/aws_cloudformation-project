@@ -780,7 +780,7 @@ def deploy_stack_set(
             call_as_self=call_as_self,
             call_as_delegated_admin=call_as_delegated_admin,
         )
-        print(f"  📋 preview stack set in AWS CloudFormation console: {console_url}")
+        print(f"  📋 filter stack set in AWS CloudFormation console: {console_url}")
 
     stack_set = better_boto.describe_stack_set(
         bsm=bsm,
@@ -867,6 +867,15 @@ def deploy_stack_set(
             **resolve_kwargs(**kwargs)
         )
 
+    kwargs = dict(name_or_id_or_arn=stack_set_name)
+    if permission_model_is_self_managed is not NOTHING:
+        kwargs["is_self_managed"] = True
+    elif permission_model_is_service_managed is not NOTHING:
+        kwargs["is_service_managed"] = True
+    else:
+        kwargs["is_self_managed"] = True
+    console_url = aws_console.cloudformation.get_stack_set_info(**kwargs)
+    print(f"  📋 review stack set info in AWS CloudFormation console: {console_url}")
     if verbose:
         print("  done")
 
@@ -909,7 +918,7 @@ def remove_stack_set(
             call_as_self=call_as_self,
             call_as_delegated_admin=call_as_delegated_admin,
         )
-        print(f"  📋 preview stack set in AWS CloudFormation console: {console_url}")
+        print(f"  📋 filter stack set in AWS CloudFormation console: {console_url}")
 
     better_boto.delete_stack_set(
         bsm=bsm,

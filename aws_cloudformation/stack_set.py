@@ -274,3 +274,7 @@ class StackInstance:
             last_drift_check_timestamp=data.get("LastDriftCheckTimestamp"),
             last_operation_id=data.get("LastOperationId"),
         )
+
+    @property
+    def acc_and_region(self) -> str:
+        return f"{self.aws_account_id}/{self.aws_region}"
