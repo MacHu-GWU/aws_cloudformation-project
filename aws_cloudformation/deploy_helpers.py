@@ -2,13 +2,11 @@
 
 import typing as T
 import sys
-import dataclasses
 
 from boto_session_manager import BotoSesManager
 from func_args import NOTHING
 from aws_console_url import AWSConsole
 
-from .console import get_s3_console_url
 from .helper import md5_of_text
 
 DEFAULT_S3_PREFIX_FOR_TEMPLATE = "cloudformation/template"
@@ -60,7 +58,8 @@ def upload_template_to_s3(
     template_url = f"https://s3.amazonaws.com/{bucket}/{key}"
     if verbose:  # pragma: no cover
         print(f"  🪣 upload template to {s3_uri} ...")
-        console_url = get_s3_console_url(bucket=bucket, prefix=key)
+        aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+        console_url = aws_console.s3.get_console_url(bucket=bucket, prefix=key)
         print(f"    preview template in AWS S3 console: {console_url}")
     bsm.s3_client.put_object(
         Bucket=bucket,

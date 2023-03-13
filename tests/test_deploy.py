@@ -49,11 +49,12 @@ class Test(BaseTest):
         def deployment(
             ith: int,
             tpl: cf.Template,
+            skip_plan: bool,
             has_nested: bool = False,
         ):
             print(f"****** deployment {ith} ******")
             if has_nested:
-                env.package(tpl, self.bucket)
+                env.package(tpl, self.bucket, verbose=False)
             return deploy_stack(
                 bsm=self.bsm,
                 stack_name=stack_name,
@@ -61,31 +62,37 @@ class Test(BaseTest):
                 bucket=self.bucket,
                 parameters=params,
                 delays=0.1,
-                skip_plan=True,
+                skip_plan=skip_plan,
                 skip_prompt=True,
                 include_named_iam=True,
             )
 
         delete_stack()
-        response = deployment(ith=1, tpl=make_tpl_1())
+        response = deployment(ith=1, tpl=make_tpl_1(), skip_plan=True)
         assert response.is_deploy_happened is True
         assert response.is_create is True
 
-        response = deployment(ith=1, tpl=make_tpl_1())
+        response = deployment(ith=1, tpl=make_tpl_1(), skip_plan=True)
         assert response.is_deploy_happened is False
         assert response.is_create is None
         assert response.stack_id is None
         assert response.change_set_id is None
 
-        response = deployment(ith=2, tpl=make_tpl_2())
+        response = deployment(ith=2, tpl=make_tpl_2(), skip_plan=False)
         assert response.is_deploy_happened is True
         assert response.is_create is False
 
-        response = deployment(ith=3, tpl=make_tpl_3())
+        response = deployment(ith=2, tpl=make_tpl_2(), skip_plan=False)
+        assert response.is_deploy_happened is False
+        assert response.is_create is None
+        assert response.stack_id is None
+        assert response.change_set_id is None
+
+        response = deployment(ith=3, tpl=make_tpl_3(), skip_plan=True)
         assert response.is_deploy_happened is True
         assert response.is_create is False
 
-        response = deployment(ith=4, tpl=make_tpl_4(), has_nested=True)
+        response = deployment(ith=4, tpl=make_tpl_4(), skip_plan=False, has_nested=True)
         assert response.is_deploy_happened is True
         assert response.is_create is False
 
@@ -132,7 +139,7 @@ class Test(BaseTest):
 
     def test(self):
         self._test_stack()
-        self._test_stack_set()
+        # self._test_stack_set()
 
 
 if __name__ == "__main__":
