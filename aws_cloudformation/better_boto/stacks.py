@@ -480,7 +480,16 @@ def wait_delete_stack_to_finish(
     :return: Nothing
     """
     if verbose:  # pragma: no cover
-        print(f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} ...")
+        if wait_until_exec_stopped:
+            print(
+                f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} , "
+                f"if failed, raise error immediately ..."
+            )
+        else:
+            print(
+                f"  {Fore.CYAN}wait for delete to finish{Style.RESET_ALL} , "
+                f"if failed, wait until rollback (if possible) is finished ..."
+            )
 
     failed_log_printed = False
     has_error: bool = False
@@ -553,7 +562,16 @@ def wait_create_or_update_stack_to_finish(
     :return: a :class:`~aws_cottonformation.stack.Stack` object.
     """
     if verbose:  # pragma: no cover # pragma: no cover
-        print(f" {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} ...")
+        if wait_until_exec_stopped:
+            print(
+                f"  {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} , "
+                f"if failed, raise error immediately ..."
+            )
+        else:
+            print(
+                f"  {Fore.CYAN}wait for deploy to finish{Style.RESET_ALL} , "
+                f"if failed, wait until rollback (if possible) is finished ..."
+            )
 
     is_arn = stack_name.startswith("arn:")
 
