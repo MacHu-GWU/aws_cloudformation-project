@@ -63,9 +63,22 @@ def deploy_stack(
     )
 
 
+def describe_stack_set(
+    stack_set_name: str,
+) -> T.Optional[aws_cf.StackSet]:
+    stack_set = aws_cf.better_boto.describe_stack_set(
+        bsm=bsm, name=stack_set_name, call_as_delegated_admin=True
+    )
+    if stack_set is not None:
+        print(f"preview stack set: {stack_set.console_url}")
+    return stack_set
+
+
 def delete_stack_set(stack_set_name: str):
     aws_cf.remove_stack_set(
-        bsm=bsm, stack_set_name=stack_set_name, call_as_delegated_admin=True,
+        bsm=bsm,
+        stack_set_name=stack_set_name,
+        call_as_delegated_admin=True,
     )
 
 
@@ -95,6 +108,73 @@ def deploy_stack_set(
         auto_deployment_is_enabled=False,
         call_as_delegated_admin=True,
     )
+
+
+def _deploy_stack_instances(
+    stack_set_name: str,
+    ou_id_list: T.List[str],
+    func: T.Callable,
+):
+    kwargs = dict(
+        bsm=bsm,
+        stack_set_name=stack_set_name,
+        regions=["us-east-1"],
+        deployment_targets=dict(
+            OrganizationalUnitIds=ou_id_list,
+        ),
+        call_as_delegated_admin=True,
+    )
+    if func.__name__ == "delete_stack_instances":
+        kwargs["retain_stacks"] = False
+    func(**kwargs)
+
+
+def create_stack_instances(
+    stack_set_name: str,
+    ou_id_list: T.List[str],
+):
+    _deploy_stack_instances(
+        stack_set_name=stack_set_name,
+        ou_id_list=ou_id_list,
+        func=aws_cf.better_boto.create_stack_instances,
+    )
+
+
+def update_stack_instances(
+    stack_set_name: str,
+    ou_id_list: T.List[str],
+):
+    _deploy_stack_instances(
+        stack_set_name=stack_set_name,
+        ou_id_list=ou_id_list,
+        func=aws_cf.better_boto.update_stack_instances,
+    )
+
+
+def delete_stack_instances(
+    stack_set_name: str,
+    ou_id_list: T.List[str],
+):
+    _deploy_stack_instances(
+        stack_set_name=stack_set_name,
+        ou_id_list=ou_id_list,
+        func=aws_cf.better_boto.delete_stack_instances,
+    )
+
+
+def wait_deploy_stack_instances_to_stop(
+    stack_set_name: str,
+):
+    stack_instances = aws_cf.better_boto.wait_deploy_stack_instances_to_stop(
+        bsm=bsm,
+        stack_set_name=stack_set_name,
+        raise_error_until_exec_stopped=True,
+        delays=5,
+        timeout=120,
+        verbose=True,
+        call_as_delegated_admin=True,
+    )
+    # rprint(stack_instances)
 
 
 def _test_deploy_happy_path(
@@ -392,9 +472,23 @@ def _test_deploy_stack_set_happy_path():
         aws_cf.Parameter(key="ProjectName", value=project_name),
     ]
 
+    stack_set = describe_stack_set(stack_set_name)
+
+    # ----------------------------------------------------------------------
+    # get organizational id from aws_organizations
+    # ----------------------------------------------------------------------
+    import aws_organizations as aws_orgs
+
+    org_struct = aws_orgs.OrgStructure.get_org_structure(bsm)
+    ou_id_infra = org_struct.get_node_by_name("infra").id
+    ou_id_app = org_struct.get_node_by_name("app").id
+
     # ----------------------------------------------------------------------
     # clean possible existing stack at begin
     # ----------------------------------------------------------------------
+    if stack_set:
+        delete_stack_instances(stack_set_name, [ou_id_infra, ou_id_app])
+        wait_deploy_stack_instances_to_stop(stack_set_name)
     delete_stack_set(stack_set_name)
     ensure_stack_set_exist_or_not(stack_set_name, exists=False)
 
@@ -408,17 +502,43 @@ def _test_deploy_stack_set_happy_path():
     )
     assert is_create is True
     ensure_stack_set_exist_or_not(stack_set_name, exists=True)
+    describe_stack_set(stack_set_name)
+
+    # ----------------------------------------------------------------------
+    # create initial stack instances
+    # ----------------------------------------------------------------------
+    create_stack_instances(
+        stack_set_name,
+        [ou_id_infra],
+    )
+    wait_deploy_stack_instances_to_stop(stack_set_name)
+
+    # ----------------------------------------------------------------------
+    # create more stack instances
+    # ----------------------------------------------------------------------
+    create_stack_instances(
+        stack_set_name,
+        [ou_id_app],
+    )
+    wait_deploy_stack_instances_to_stop(stack_set_name)
 
     # ----------------------------------------------------------------------
     # update the stack set
     # ----------------------------------------------------------------------
     is_create, stack_set_id = deploy_stack_set(
         stack_set_name,
-        template=happy_path.tpl_1,
+        template=happy_path.tpl_2,
         params=params,
     )
     assert is_create is False
     ensure_stack_set_exist_or_not(stack_set_name, exists=True)
+    wait_deploy_stack_instances_to_stop(stack_set_name)
+
+    # ----------------------------------------------------------------------
+    # delete all stack instances
+    # ----------------------------------------------------------------------
+    delete_stack_instances(stack_set_name, [ou_id_infra, ou_id_app])
+    wait_deploy_stack_instances_to_stop(stack_set_name)
 
     # ----------------------------------------------------------------------
     # clean stack at the end

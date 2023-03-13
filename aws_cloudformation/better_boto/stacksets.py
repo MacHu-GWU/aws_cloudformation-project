@@ -10,6 +10,7 @@ from boto_session_manager import BotoSesManager
 from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
 from aws_console_url import AWSConsole
+from colorama import Fore, Style
 
 from .. import exc
 from ..stack import (
@@ -427,7 +428,7 @@ def list_stack_instances(
 def wait_deploy_stack_instances_to_stop(
     bsm: BotoSesManager,
     stack_set_name: str,
-    raise_errror_until_exec_stopped: bool,
+    raise_error_until_exec_stopped: bool,
     delays: T.Union[int, float],
     timeout: T.Union[int, float],
     verbose: bool,
@@ -444,7 +445,7 @@ def wait_deploy_stack_instances_to_stop(
 
     :param bsm:
     :param stack_set_name:
-    :param raise_errror_until_exec_stopped:
+    :param raise_error_until_exec_stopped:
     :param delays:
     :param timeout:
     :param verbose:
@@ -452,6 +453,11 @@ def wait_deploy_stack_instances_to_stop(
     :param call_as_delegated_admin:
     :return:
     """
+    if verbose:  # pragma: no cover
+        print(
+            f"  {Fore.CYAN}wait for deploy stack instances to stop{Style.RESET_ALL} ..."
+        )
+
     aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
 
     for _ in Waiter(
@@ -467,7 +473,12 @@ def wait_deploy_stack_instances_to_stop(
             call_as_delegated_admin=call_as_delegated_admin,
         ).all()
 
-        is_stopped = False
+        if len(stack_instances) == 0:
+            if verbose:  # pragma: no cover
+                print(f"\n    there's no stack instances.")
+                return stack_instances
+
+        is_stopped_flag_list: T.List[bool] = list()
         error: T.Optional[exc.DeployStackInstanceFailedError] = None
         for stack_instance in stack_instances:
             if stack_instance.is_logical_failed():
@@ -484,15 +495,16 @@ def wait_deploy_stack_instances_to_stop(
                         f"and it may have more stack instances also failed, "
                         f"please check in the console: {console_url}."
                     )
-                if raise_errror_until_exec_stopped is True:
+                if raise_error_until_exec_stopped is True:
                     raise error
 
-            if stack_instance.is_logical_stopped():
-                is_stopped = True
-                break
+            is_stopped_flag_list.append(stack_instance.is_logical_stopped())
 
         if error is not None:
             raise error
 
-        if is_stopped:
+        if all(is_stopped_flag_list):
+            if verbose:  # pragma: no cover
+                print(f"\n    all stack instances are stopped.")
+
             return stack_instances
