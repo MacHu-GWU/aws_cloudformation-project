@@ -3,6 +3,7 @@
 """
 function in this module is to provide a more user-friendly boto3 API call
 without changing the behavior and avoid adding additional feature.
+It is the low level api for the :mod:`aws_cloudformation.deploy` module.
 
 Design Principle:
 
