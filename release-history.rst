@@ -8,13 +8,22 @@ Backlog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
 
-- add ``deploy_stack_instances``, ``remove_stack_instances``, ``apply_stack_instances`` methods.
-
 **Minor Improvements**
 
 **Bugfixes**
 
 **Miscellaneous**
+
+
+1.4.1 (2023-03-13)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features and Improvements**
+
+- add ``wait_deploy_stack_instances_to_stop``, methods.
+
+**Minor Improvements**
+
+- greatly improve the logging.
 
 
 1.3.3 (2023-03-11)
