@@ -1,7 +1,28 @@
 # -*- coding: utf-8 -*-
 import pytest
 
+import enum
 from aws_cloudformation.stack import StackStatusEnum, DriftStatusEnum, Parameter
+
+
+class Color(str, enum.Enum):
+    red = "red"
+    green = "green"
+    blue = "blue"
+
+
+class TestStrEnum:
+    def test(self):
+        assert Color.red == "red"
+        assert Color.red.value == "red"
+        assert "red" == Color.red
+        assert "red" == Color.red.value
+
+        assert "red" in [Color.red, None]
+        assert "red" in [Color.red.value, None]
+        assert Color.red in [Color.red, None]
+        assert Color.red.value in [Color.red.value, None]
+        assert None in [Color.red.value, None]
 
 
 class TestStackStatusEnum:
