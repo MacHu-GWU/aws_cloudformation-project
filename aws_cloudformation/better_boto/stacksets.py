@@ -9,6 +9,7 @@ import typing as T
 from boto_session_manager import BotoSesManager
 from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
+from aws_console_url import AWSConsole
 
 from ..stack import (
     Parameter,
@@ -43,7 +44,8 @@ def describe_stack_set(
     )
     try:
         res = bsm.cloudformation_client.describe_stack_set(**kwargs)
-        return StackSet.from_describe_stack_set_response(res["StackSet"])
+        stack_set = StackSet.from_describe_stack_set_response(res["StackSet"])
+        return stack_set
     except Exception as e:
         if "StackSetNotFoundException" in str(e):
             return None
@@ -72,7 +74,6 @@ def create_stack_set(
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
     client_request_token: T.Optional[str] = NOTHING,
-    verbose: bool = True,
 ) -> str:
     """
     Ref:
@@ -136,7 +137,6 @@ def update_stack_set(
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
     managed_execution_active: T.Optional[bool] = NOTHING,
-    verbose: bool = True,
 ) -> str:
     """
     Ref:
@@ -183,7 +183,6 @@ def delete_stack_set(
     stack_set_name: str,
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
-    verbose: bool = True,
 ):
     """
     Ref:
@@ -248,7 +247,6 @@ def create_stack_instances(
     operation_id: T.Optional[str] = NOTHING,
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
-    verbose: bool = True,
 ) -> str:
     """
     Ref:
@@ -286,7 +284,6 @@ def update_stack_instances(
     operation_id: T.Optional[str] = NOTHING,
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
-    verbose: bool = True,
 ):
     """
     Ref:
@@ -322,7 +319,6 @@ def delete_stack_instances(
     operation_id: T.Optional[str] = NOTHING,
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
-    verbose: bool = True,
 ) -> str:
     """
     Ref:
@@ -359,7 +355,6 @@ def _list_stack_instances(
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
     page_size: int = 20,
     max_results: int = 1000,
-    verbose: bool = True,
 ) -> T.Iterable[StackInstance]:
     paginator = bsm.cloudformation_client.get_paginator("list_stack_instances")
     kwargs = dict(
@@ -400,7 +395,6 @@ def list_stack_instances(
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
     page_size: int = 20,
     max_results: int = 1000,
-    verbose: bool = True,
 ) -> StackInstanceIterProxy:
     """
     Ref:
@@ -420,6 +414,5 @@ def list_stack_instances(
             call_as_delegated_admin=call_as_delegated_admin,
             page_size=page_size,
             max_results=max_results,
-            verbose=verbose,
         )
     )

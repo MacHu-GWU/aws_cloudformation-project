@@ -3,6 +3,11 @@
 """
 function in this module is to provide a more user-friendly boto3 API call
 without changing the behavior and avoid adding additional feature.
+
+Design Principle:
+
+- native boto3 API should NOT have verbose argument
+- custom waiter could have verbose argument
 """
 
 from .stacks import (
