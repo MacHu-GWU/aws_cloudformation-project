@@ -254,7 +254,7 @@ Talk is cheap, show me the code
 
     # -*- coding: utf-8 -*-
 
-    from aws_cloudformation import deploy_stack, remove_stack
+    from aws_cloudformation.api import deploy_stack, remove_stack
     from aws_cloudformation.tests import bsm
     from aws_cloudformation.tests.stacks.secretmanager_stack import (
         make_tpl_1,

@@ -15,6 +15,14 @@ Backlog
 **Miscellaneous**
 
 
+1.5.1 (2023-11-16)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Minor Improvements**
+
+- Upgrade the ``aws_console_url`` dependency to 1.x.y
+- Use bounded version in requirements.txt
+
+
 1.4.1 (2023-03-13)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
