@@ -5,7 +5,7 @@ import sys
 
 from boto_session_manager import BotoSesManager
 from func_args import NOTHING
-from aws_console_url import AWSConsole
+from aws_console_url.api import AWSConsole
 
 from .helper import md5_of_text
 

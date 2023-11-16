@@ -9,7 +9,8 @@ import enum
 import dataclasses
 from datetime import datetime
 
-import aws_console_url
+import aws_arns.api as aws_arns
+import aws_console_url.api as acu
 
 from .helper import get_enum_by_name
 from .stack import (
@@ -96,12 +97,8 @@ class StackSet:
     @classmethod
     def from_arn(cls, arn: str) -> "StackSet":
         """ """
-        stack_set = aws_console_url.aws_resource.CloudFormationStackSet.from_arn(arn)
-        return cls(
-            id=stack_set.stack_set_id,
-            name=stack_set.name,
-            arn=stack_set.arn
-        )
+        stack_set = aws_arns.res.CloudFormationStackSet.from_arn(arn)
+        return cls(id=stack_set.stack_set_id, name=stack_set.stackset_name, arn=arn)
 
     @classmethod
     def from_describe_stack_set_response(cls, data: dict) -> "StackSet":
@@ -151,7 +148,7 @@ class StackSet:
 
     @property
     def console_url(self) -> str:
-        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
+        aws_console = acu.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_stack_set_info(
             name_or_id_or_arn=self.arn,
             is_self_managed=self.is_self_managed,
@@ -271,34 +268,27 @@ class StackInstance:
         """
         The stack instance is considered as "succeeded" logically.
         """
-        return (
-
-            self.detailed_status == StackInstanceDetailedStatusEnum.SUCCEEDED.value
-        )
+        return self.detailed_status == StackInstanceDetailedStatusEnum.SUCCEEDED.value
 
     def is_logical_failed(self) -> bool:  # pragma: no cover
         """
         The stack instance is considered as "failed" logically.
         """
-        return (
-            self.detailed_status in [
+        return self.detailed_status in [
             StackInstanceDetailedStatusEnum.FAILED.value,
             StackInstanceDetailedStatusEnum.INOPERABLE.value,
         ]
-        )
 
-    def is_logical_stopped(self) -> bool: # pragma: no cover
+    def is_logical_stopped(self) -> bool:  # pragma: no cover
         """
         The stack instance is considered as "stopped" logically.
         """
-        return (
-            self.detailed_status in [
-                StackInstanceDetailedStatusEnum.SUCCEEDED.value,
-                StackInstanceDetailedStatusEnum.FAILED.value,
-                StackInstanceDetailedStatusEnum.CANCELLED.value,
-                StackInstanceDetailedStatusEnum.INOPERABLE.value,
-            ]
-        )
+        return self.detailed_status in [
+            StackInstanceDetailedStatusEnum.SUCCEEDED.value,
+            StackInstanceDetailedStatusEnum.FAILED.value,
+            StackInstanceDetailedStatusEnum.CANCELLED.value,
+            StackInstanceDetailedStatusEnum.INOPERABLE.value,
+        ]
 
     @classmethod
     def from_describe_stack_instance_response(cls, data: dict) -> "StackInstance":
@@ -345,7 +335,7 @@ class StackInstance:
         """
         The URL to the deployment target account CloudFormation stack.
         """
-        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
+        aws_console = acu.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_stack_info(
             name_or_arn=self.stack_id,
         )

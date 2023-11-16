@@ -3,7 +3,7 @@
 import typing as T
 
 from func_args import NOTHING
-from aws_console_url import AWSConsole
+from aws_console_url.api import AWSConsole
 
 from ..helper import get_true_flag_count
 from ..stack import Parameter
@@ -181,14 +181,14 @@ def get_filter_stack_set_console_url(
     call_as_self: T.Optional[bool] = NOTHING,
     call_as_delegated_admin: T.Optional[bool] = NOTHING,
 ) -> str:
+    # fmt: off
     if call_as_self is True:
         return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
     elif call_as_delegated_admin is True:
-        return aws_console.cloudformation.filter_service_managed_stack_set(
-            stack_set_name
-        )
+        return aws_console.cloudformation.filter_service_managed_stack_set(stack_set_name)
     else:
         return aws_console.cloudformation.filter_self_managed_stack_set(stack_set_name)
+    # fmt: on
 
 
 def _get_stack_set_tab_console_url(

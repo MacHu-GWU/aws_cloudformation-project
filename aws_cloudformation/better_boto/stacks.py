@@ -10,7 +10,7 @@ from boto_session_manager import BotoSesManager, AwsServiceEnum
 from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
 from colorama import Fore, Style
-from aws_console_url import AWSConsole
+from aws_console_url.api import AWSConsole
 
 from .. import exc
 from ..waiter import Waiter

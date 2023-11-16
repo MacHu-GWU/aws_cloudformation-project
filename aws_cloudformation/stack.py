@@ -9,7 +9,8 @@ import enum
 import dataclasses
 from datetime import datetime
 
-import aws_console_url
+import aws_arns.api as aws_arns
+import aws_console_url.api as acu
 
 from .helper import get_enum_by_name
 from .taggings import to_tag_dict
@@ -256,8 +257,8 @@ class Stack:
     @classmethod
     def from_arn(cls, arn: str) -> "Stack":
         """ """
-        stack = aws_console_url.aws_resource.CloudFormationStack.from_arn(arn)
-        return cls(id=arn, name=stack.name)
+        stack = aws_arns.res.CloudFormationStack.from_arn(arn)
+        return cls(id=arn, name=stack.stack_name)
 
     @classmethod
     def from_describe_stacks_response(cls, data: dict) -> "Stack":
@@ -320,7 +321,7 @@ class Stack:
 
     @property
     def console_url(self) -> str:
-        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
+        aws_console = acu.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_stack_info(name_or_arn=self.id)
 
 
@@ -513,7 +514,7 @@ class ChangeSet:
 
     @property
     def console_url(self) -> str:
-        aws_console = aws_console_url.AWSConsole(aws_region=self.aws_region)
+        aws_console = acu.AWSConsole(aws_region=self.aws_region)
         return aws_console.cloudformation.get_change_set(
             stack_name_or_arn=self.stack_id,
             change_set_id=self.change_set_id,

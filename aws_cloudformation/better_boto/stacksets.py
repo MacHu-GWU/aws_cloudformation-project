@@ -9,7 +9,7 @@ import typing as T
 from boto_session_manager import BotoSesManager
 from iterproxy import IterProxy
 from func_args import NOTHING, resolve_kwargs
-from aws_console_url import AWSConsole
+from aws_console_url.api import AWSConsole
 from colorama import Fore, Style
 
 from .. import exc

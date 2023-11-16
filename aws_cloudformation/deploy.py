@@ -9,7 +9,7 @@ import dataclasses
 from datetime import datetime
 
 from boto_session_manager import BotoSesManager
-import aws_console_url
+from aws_console_url.api import AWSConsole
 from colorama import Fore, Style
 from func_args import NOTHING, resolve_kwargs
 
@@ -523,7 +523,7 @@ def deploy_stack(
             "=",
             length,
         )
-        aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+        aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
         console_url = aws_console.cloudformation.filter_stack(name=stack_name)
         print(f"  📋 filter stack in AWS CloudFormation console: {console_url}")
 
@@ -646,7 +646,7 @@ def remove_stack(
             "=",
             length,
         )
-        aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+        aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
         console_url = aws_console.cloudformation.filter_stack(name=stack_name)
         print(f"  📋 filter stack in AWS CloudFormation console: {console_url}")
 
@@ -762,7 +762,7 @@ def deploy_stack_set(
 
     :return: (is_create, stack_set_id_or_operation_id)
     """
-    aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+    aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
     if verbose:
         length = _find_ruler_length(stack_set_name, 52)
         print_header(
@@ -898,7 +898,7 @@ def remove_stack_set(
 
     :return: None
     """
-    aws_console = aws_console_url.AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
+    aws_console = AWSConsole(aws_region=bsm.aws_region, bsm=bsm)
     if verbose:
         length = _find_ruler_length(stack_set_name, 52)
         print_header(

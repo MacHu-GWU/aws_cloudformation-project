@@ -17,6 +17,9 @@
 .. image:: https://img.shields.io/pypi/pyversions/aws_cloudformation.svg
     :target: https://pypi.python.org/pypi/aws_cloudformation
 
+.. image:: https://img.shields.io/badge/Release_History!--None.svg?style=social
+    :target: https://github.com/MacHu-GWU/aws_cloudformation-project/blob/main/release-history.rst
+
 .. image:: https://img.shields.io/badge/STAR_Me_on_GitHub!--None.svg?style=social
     :target: https://github.com/MacHu-GWU/aws_cloudformation-project
 
